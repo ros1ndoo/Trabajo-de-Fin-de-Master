@@ -93,13 +93,13 @@ Si la tasa de pérdida de modelos tras el *Fuzzy Matching* supera el **40%** (re
 
 ## 6. Roadmap
 
-1. ✅ Definición del problema, fuentes y viabilidad *(Entrega 02)*
-2. ✅ Diseño del modelo de datos y capa gold *(Entrega 03)*
-3. ✅ Diseño del análisis y estrategia de modelado *(Entrega 04)*
-4. ✅ Mockup del frontal Bootstrap 5 modo oscuro *(Entrega 05)*
-5. ⬜ Ingesta masiva y script de extracción automatizada de la API NHTSA
-6. ⬜ Pipeline de limpieza y *Fuzzy Matching* auditado
-7. ⬜ Consolidación de la capa Gold en Parquet
-8. ⬜ Análisis Exploratorio de Datos (EDA)
-9. ⬜ Entrenamiento, validación temporal y ajuste del modelo
-10. ⬜ Despliegue del dashboard en Streamlit
+1.  Definición del problema, fuentes y viabilidad *(Entrega 02)*
+2.  Diseño del modelo de datos y capa gold *(Entrega 03)*
+3.  Diseño del análisis y estrategia de modelado *(Entrega 04)*
+4.  Mockup del frontal Bootstrap 5 modo oscuro *(Entrega 05)*
+5.  Ingesta masiva y script de extracción automatizada de la API NHTSA
+6.  Pipeline de limpieza y *Fuzzy Matching* auditado
+7.  Consolidación de la capa Gold en Parquet
+8.  Análisis Exploratorio de Datos (EDA)
+9.  Entrenamiento, validación temporal y ajuste del modelo
+10.  Despliegue del dashboard en Streamlit

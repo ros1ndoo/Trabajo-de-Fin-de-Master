@@ -81,7 +81,11 @@ La variable objetivo se construye en tres fases para garantizar su comparabilida
 ### Visualización y Producto Final (MVP)
 - **Matplotlib & Seaborn:** EDA.
 - **Streamlit + Plotly:** Framework de despliegue del dashboard interactivo MVP.
-- **Bootstrap 5 + Chart.js:** Mockup de alta fidelidad del frontal (modo oscuro). ![Mockup del frontal](docs/assets/05_mockup_frontal.png)
+- **Bootstrap 5 + Chart.js:** Mockup de alta fidelidad del frontal (modo oscuro).
+
+
+- ![Mockup del frontal](docs/assets/05_mockup_frontal.png)
+
 
 ---
 

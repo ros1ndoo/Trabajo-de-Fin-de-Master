@@ -41,7 +41,7 @@ El pipeline de datos sigue una arquitectura de medallón (**Raw → Processed �
 │   └── gold/         # gold_us_car_reliability.parquet — dataset final listo para ML
 ├── docs/
 │   ├── entregas/     # Documentación de diseño y decisiones de arquitectura
-│   └── assets/       # Mockup HTML del frontal (Bootstrap 5, modo oscuro)
+│   └── assets/       # Mockup del frontal 
 ├── notebooks/        # EDA y experimentación
 └── src/              # Scripts Python de producción (ingesta, limpieza, modelo)
 ```

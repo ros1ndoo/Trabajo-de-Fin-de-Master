@@ -1,0 +1,1 @@
+Los derivados voluminosos se reconstruyen. Solo se versionan manifiestos y metadatos necesarios para la trazabilidad.

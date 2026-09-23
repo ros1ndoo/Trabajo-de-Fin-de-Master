@@ -1,0 +1,10 @@
+{
+  "source": "https://www.kaggle.com/datasets/CooperUnion/cardataset",
+  "download_url": "https://www.kaggle.com/api/v1/datasets/download/CooperUnion/cardataset",
+  "retrieved_at_utc": "2026-09-17T18:47:58.084182+00:00",
+  "sha256": "26e39d3e902246d01a93ae390f51129a288079aefad2cb3292751a262ffd62d8",
+  "rows": 11914,
+  "min_year": 1990,
+  "max_year": 2017,
+  "note": "Static technical specifications; not a current vehicle catalogue. Retain original source attribution."
+}

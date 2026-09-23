@@ -1,0 +1,17 @@
+{
+  "files": [
+    {
+      "bytes": 7467722,
+      "name": "FLAT_RCL_PRE_2010.zip",
+      "sha256": "dc2e2ea2a4af886d53a38e91b6ee5ada8c89de4e464b141176f23b303e51a72c",
+      "url": "https://static.nhtsa.gov/odi/ffdd/rcl/FLAT_RCL_PRE_2010.zip"
+    },
+    {
+      "bytes": 14862982,
+      "name": "FLAT_RCL_POST_2010.zip",
+      "sha256": "ad2806bbe0ab690b9de0560d420f451ac632a6b644dcbf5d04816d8f4b276866",
+      "url": "https://static.nhtsa.gov/odi/ffdd/rcl/FLAT_RCL_POST_2010.zip"
+    }
+  ],
+  "snapshot_date": "2026-09-18"
+}

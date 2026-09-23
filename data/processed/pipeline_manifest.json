@@ -1,0 +1,128 @@
+{
+  "fuzzy_matching": {
+    "accepted": 1361,
+    "auto_accepted": 1361,
+    "contingency_recommended": false,
+    "loss_rate": 0.38499774062358794,
+    "manual_review": 234,
+    "manually_accepted": 0,
+    "no_candidate": 26,
+    "rejected": 592,
+    "technical_rows": 2213
+  },
+  "generated_at": "2026-09-18T22:56:06+02:00",
+  "gold_rows": 1361,
+  "inference_catalog_rows": 2213,
+  "nhtsa": {
+    "catalog_failures": [],
+    "catalog_rows": 56799,
+    "failures": [],
+    "recall_records": 8085,
+    "retrieval_mode": "bulk",
+    "snapshot_directory": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\data\\raw\\nhtsa_bulk\\2026-09-18",
+    "unverified_zero_queries": 0,
+    "vehicle_queries_failed": 0,
+    "vehicle_queries_succeeded": 1343
+  },
+  "normalizer": {
+    "formula": "clip(50 - 10 * ((score_recalls_bruto - mean_train_segment) / std_train_segment), 0, 100)",
+    "global_mean": 2.0783132530120483,
+    "global_std": 2.611738170519867,
+    "segment_statistics": {
+      "2dr hatchback": {
+        "mean": 1.0869565217391304,
+        "std": 1.2127239722592482
+      },
+      "2dr suv": {
+        "mean": 2.3125,
+        "std": 1.9029171684547912
+      },
+      "4dr hatchback": {
+        "mean": 1.4761904761904763,
+        "std": 2.049832690479132
+      },
+      "4dr suv": {
+        "mean": 1.9870129870129871,
+        "std": 3.048284620848497
+      },
+      "cargo van": {
+        "mean": 0.2,
+        "std": 0.4
+      },
+      "convertible": {
+        "mean": 1.6818181818181819,
+        "std": 2.0590457550738406
+      },
+      "coupe": {
+        "mean": 1.34375,
+        "std": 1.60291482540402
+      },
+      "crew cab pickup": {
+        "mean": 1.4375,
+        "std": 2.3377005261581303
+      },
+      "extended cab pickup": {
+        "mean": 3.107142857142857,
+        "std": 4.496739181374224
+      },
+      "passenger minivan": {
+        "mean": 2.377551020408163,
+        "std": 2.0641018510428575
+      },
+      "passenger van": {
+        "mean": 4.714285714285714,
+        "std": 5.041663152863227
+      },
+      "regular cab pickup": {
+        "mean": 0.0,
+        "std": 2.611738170519867
+      },
+      "sedan": {
+        "mean": 2.4642857142857144,
+        "std": 2.7220284303273186
+      },
+      "wagon": {
+        "mean": 2.673076923076923,
+        "std": 2.2142124302764024
+      }
+    },
+    "semantics": "100 means lower propensity to NHTSA safety recalls; this is not general mechanical reliability.",
+    "train_end_year": 2010
+  },
+  "outputs": {
+    "fuzzy_audit": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\data\\processed\\audit_fuzzy_matches.csv",
+    "gold": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\data\\gold\\gold_us_car_reliability.parquet",
+    "inference_catalog": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\data\\gold\\us_car_inference_catalog.parquet",
+    "sqlite": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\data\\processed\\auto_reliability.sqlite"
+  },
+  "processed_quality": {
+    "duplicate_keys": 0,
+    "max_year": 2017,
+    "min_year": 1995,
+    "null_keys": 0,
+    "null_numeric_values": 28,
+    "output_rows": 2213,
+    "source_rows": 11090
+  },
+  "raw_quality": {
+    "dropped_invalid_key_or_year": 824,
+    "kept_rows": 11090,
+    "min_year": 1995,
+    "source_path": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\data\\raw\\cooperunion_car_features.csv",
+    "source_rows": 11914
+  },
+  "raw_technical_csv": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\data\\raw\\cooperunion_car_features.csv",
+  "raw_technical_sha256": "26e39d3e902246d01a93ae390f51129a288079aefad2cb3292751a262ffd62d8",
+  "technical_transform": {
+    "aggregation": "median of observed valid trims within each make/model/year",
+    "conversion_reference": "NIST SP 811 Appendix B.9: 745.6999 W/HP; 735.4988 W/CV",
+    "hp_interpretation": "US mechanical horsepower (source column convention)",
+    "hp_to_cv_factor": 1.0138696351374061,
+    "imputation": "none before split; fitted on training rows by estimator only",
+    "power_unit": "CV",
+    "version": "2-observed-only-cv"
+  },
+  "warnings": [
+    "Ingesta masiva oficial sin límite de vehículos. El fichero contiene vehículos con campañas; su ausencia no acredita cero recalls. Las exclusiones y los cruces dudosos se conservan en la auditoría."
+  ]
+}

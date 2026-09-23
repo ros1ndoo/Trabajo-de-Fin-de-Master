@@ -1,0 +1,1 @@
+Los dos Parquet de servicio versionados permiten ejecutar el MVP sin descargar las fuentes masivas.

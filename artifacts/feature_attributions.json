@@ -1,0 +1,8 @@
+[
+  {
+    "feature": "marca_y_categoria",
+    "importance": 1.0,
+    "method": "media_histórica_marca_segmento",
+    "signed_effect": null
+  }
+]

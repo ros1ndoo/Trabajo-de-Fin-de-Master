@@ -1,0 +1,9 @@
+{
+  "bytes": 3916697,
+  "retrieved_at_utc": "2026-09-18T21:11:07.958057+00:00",
+  "schema_url": "https://www.fueleconomy.gov/feg/ws/",
+  "sha256": "1801f1889096b89812380efad61dc94bf642e062d1685e42953942c5b21ea712",
+  "source_url": "https://www.fueleconomy.gov/feg/epadata/vehicles.xml.zip",
+  "terms_url": "https://www.fueleconomy.gov/feg/ORNL-disclaimer.htm",
+  "use_scope": "Non-commercial scientific/educational use; no vehicle photographs."
+}

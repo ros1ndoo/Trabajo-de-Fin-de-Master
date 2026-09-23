@@ -1,0 +1,718 @@
+{
+  "audit_sha256": "b7948f047233f9ec02c4545da93582738155aa0d82664f4db65c46cc4f006a10",
+  "bundle_id": "c87b4e5fdb0b1698298fe6af9a44772e3a6f16d70479ad1d4bf9cb613ab77a7f",
+  "by_make": {
+    "Acura": {
+      "exact_name": 52,
+      "manual_review": 108,
+      "no_model_match": 112,
+      "no_same_make_year": 4,
+      "normalized_name": 5
+    },
+    "Alfa Romeo": {
+      "exact_name": 16,
+      "manual_review": 21,
+      "no_model_match": 7,
+      "no_same_make_year": 3
+    },
+    "Aston Martin": {
+      "exact_name": 39,
+      "manual_review": 29,
+      "no_model_match": 57,
+      "no_same_make_year": 4,
+      "normalized_name": 4
+    },
+    "Audi": {
+      "exact_name": 297,
+      "manual_review": 172,
+      "no_model_match": 379,
+      "no_same_make_year": 23,
+      "normalized_name": 4
+    },
+    "Azure Dynamics": {
+      "no_model_match": 1
+    },
+    "BMW": {
+      "exact_name": 313,
+      "manual_review": 723,
+      "no_model_match": 832,
+      "no_same_make_year": 49
+    },
+    "BMW Alpina": {
+      "no_same_make_year": 3
+    },
+    "BYD": {
+      "no_model_match": 3,
+      "no_same_make_year": 4
+    },
+    "Bentley": {
+      "exact_name": 68,
+      "manual_review": 59,
+      "no_model_match": 25,
+      "no_same_make_year": 9
+    },
+    "Bugatti": {
+      "exact_name": 13,
+      "manual_review": 5,
+      "no_same_make_year": 4
+    },
+    "Bugatti Rimac": {
+      "no_same_make_year": 4
+    },
+    "Buick": {
+      "exact_name": 77,
+      "manual_review": 130,
+      "no_model_match": 46,
+      "no_same_make_year": 2
+    },
+    "CODA Automotive": {
+      "no_same_make_year": 2
+    },
+    "Cadillac": {
+      "exact_name": 86,
+      "manual_review": 190,
+      "no_model_match": 188,
+      "no_same_make_year": 14,
+      "normalized_name": 1
+    },
+    "Chevrolet": {
+      "exact_name": 177,
+      "manual_review": 590,
+      "no_model_match": 507
+    },
+    "Chrysler": {
+      "exact_name": 89,
+      "manual_review": 77,
+      "no_model_match": 58,
+      "normalized_name": 5
+    },
+    "Dabryan Coach Builders Inc": {
+      "no_same_make_year": 1
+    },
+    "Daewoo": {
+      "exact_name": 15,
+      "manual_review": 5,
+      "no_same_make_year": 6
+    },
+    "Dodge": {
+      "exact_name": 104,
+      "manual_review": 268,
+      "no_model_match": 109
+    },
+    "Eagle": {
+      "exact_name": 9,
+      "manual_review": 2
+    },
+    "Federal Coach": {
+      "no_same_make_year": 14
+    },
+    "Ferrari": {
+      "exact_name": 84,
+      "manual_review": 24,
+      "no_model_match": 61,
+      "no_same_make_year": 3
+    },
+    "Fiat": {
+      "exact_name": 18,
+      "manual_review": 18,
+      "no_model_match": 9,
+      "no_same_make_year": 2,
+      "normalized_name": 5
+    },
+    "Fisker": {
+      "exact_name": 1,
+      "manual_review": 3
+    },
+    "Ford": {
+      "exact_name": 95,
+      "manual_review": 890,
+      "no_model_match": 361,
+      "normalized_name": 1
+    },
+    "GMC": {
+      "exact_name": 3,
+      "manual_review": 450,
+      "no_model_match": 311,
+      "no_same_make_year": 5
+    },
+    "Genesis": {
+      "manual_review": 6,
+      "no_model_match": 99
+    },
+    "Geo": {
+      "exact_name": 4,
+      "manual_review": 4,
+      "no_model_match": 6
+    },
+    "Honda": {
+      "exact_name": 146,
+      "manual_review": 269,
+      "no_model_match": 94,
+      "no_same_make_year": 2
+    },
+    "Hummer": {
+      "manual_review": 5,
+      "no_model_match": 2
+    },
+    "Hyundai": {
+      "exact_name": 193,
+      "manual_review": 326,
+      "no_model_match": 73,
+      "no_same_make_year": 31
+    },
+    "INEOS Automotive": {
+      "no_same_make_year": 6
+    },
+    "Infiniti": {
+      "exact_name": 77,
+      "manual_review": 101,
+      "no_model_match": 212
+    },
+    "Isuzu": {
+      "exact_name": 8,
+      "manual_review": 47,
+      "no_model_match": 45
+    },
+    "Jaguar": {
+      "exact_name": 53,
+      "manual_review": 182,
+      "no_model_match": 140,
+      "no_same_make_year": 8
+    },
+    "Jeep": {
+      "exact_name": 5,
+      "manual_review": 330,
+      "no_model_match": 42,
+      "no_same_make_year": 7
+    },
+    "Kandi": {
+      "no_same_make_year": 1
+    },
+    "Karma": {
+      "exact_name": 1,
+      "manual_review": 1,
+      "no_model_match": 2,
+      "no_same_make_year": 1
+    },
+    "Kia": {
+      "exact_name": 146,
+      "manual_review": 280,
+      "no_model_match": 104
+    },
+    "Koenigsegg": {
+      "no_same_make_year": 3
+    },
+    "Lamborghini": {
+      "exact_name": 26,
+      "manual_review": 74,
+      "no_model_match": 14,
+      "no_same_make_year": 4
+    },
+    "Land Rover": {
+      "exact_name": 112,
+      "manual_review": 160,
+      "no_model_match": 33,
+      "no_same_make_year": 9
+    },
+    "Lexus": {
+      "exact_name": 52,
+      "manual_review": 124,
+      "no_model_match": 393,
+      "normalized_name": 120
+    },
+    "Lincoln": {
+      "exact_name": 29,
+      "manual_review": 233,
+      "no_model_match": 31,
+      "no_same_make_year": 5
+    },
+    "London Taxi": {
+      "no_same_make_year": 1
+    },
+    "Lordstown": {
+      "exact_name": 1
+    },
+    "Lotus": {
+      "exact_name": 4,
+      "manual_review": 14,
+      "no_model_match": 2,
+      "no_same_make_year": 10
+    },
+    "Lucid": {
+      "manual_review": 57,
+      "no_same_make_year": 7
+    },
+    "MINI": {
+      "exact_name": 50,
+      "manual_review": 250,
+      "no_model_match": 28,
+      "no_same_make_year": 3
+    },
+    "Mahindra": {
+      "no_same_make_year": 1
+    },
+    "Maserati": {
+      "exact_name": 27,
+      "manual_review": 105,
+      "no_model_match": 20,
+      "no_same_make_year": 29
+    },
+    "Maybach": {
+      "no_same_make_year": 31
+    },
+    "Mazda": {
+      "exact_name": 48,
+      "manual_review": 117,
+      "no_model_match": 207,
+      "no_same_make_year": 12,
+      "normalized_name": 1
+    },
+    "McLaren Automotive": {
+      "no_same_make_year": 48
+    },
+    "Mercedes-Benz": {
+      "exact_name": 171,
+      "manual_review": 691,
+      "no_model_match": 594,
+      "no_same_make_year": 33,
+      "normalized_name": 255
+    },
+    "Mercury": {
+      "exact_name": 40,
+      "manual_review": 97,
+      "no_model_match": 36
+    },
+    "Mini": {
+      "manual_review": 1
+    },
+    "Mitsubishi": {
+      "exact_name": 110,
+      "manual_review": 145,
+      "no_model_match": 68,
+      "no_same_make_year": 2,
+      "normalized_name": 5
+    },
+    "Mobility Ventures LLC": {
+      "no_same_make_year": 4
+    },
+    "Morgan": {
+      "no_same_make_year": 2
+    },
+    "Nissan": {
+      "exact_name": 140,
+      "manual_review": 441,
+      "no_model_match": 216,
+      "no_same_make_year": 2
+    },
+    "Oldsmobile": {
+      "exact_name": 27,
+      "manual_review": 28,
+      "no_model_match": 10
+    },
+    "Pagani": {
+      "manual_review": 2,
+      "no_same_make_year": 3
+    },
+    "Panoz Auto-Development": {
+      "no_same_make_year": 1
+    },
+    "Plymouth": {
+      "exact_name": 14,
+      "manual_review": 8,
+      "no_model_match": 2
+    },
+    "Polestar": {
+      "no_model_match": 28,
+      "no_same_make_year": 8
+    },
+    "Pontiac": {
+      "exact_name": 66,
+      "manual_review": 35,
+      "no_model_match": 37
+    },
+    "Porsche": {
+      "exact_name": 312,
+      "manual_review": 310,
+      "no_model_match": 399,
+      "no_same_make_year": 20
+    },
+    "Quantum Technologies": {
+      "no_same_make_year": 2
+    },
+    "Qvale": {
+      "no_same_make_year": 1
+    },
+    "RUF Automobile": {
+      "no_same_make_year": 4
+    },
+    "Ram": {
+      "exact_name": 8,
+      "manual_review": 31,
+      "no_model_match": 32,
+      "no_same_make_year": 5
+    },
+    "Rivian": {
+      "exact_name": 2,
+      "manual_review": 142,
+      "no_model_match": 17,
+      "no_same_make_year": 26
+    },
+    "Rolls-Royce": {
+      "exact_name": 47,
+      "manual_review": 50,
+      "no_model_match": 77,
+      "no_same_make_year": 16
+    },
+    "Roush Performance": {
+      "no_same_make_year": 52
+    },
+    "SRT": {
+      "exact_name": 2
+    },
+    "STI": {
+      "no_same_make_year": 1
+    },
+    "Saab": {
+      "exact_name": 20,
+      "manual_review": 17,
+      "no_model_match": 67
+    },
+    "Saleen": {
+      "no_same_make_year": 1
+    },
+    "Saleen Performance": {
+      "no_same_make_year": 4
+    },
+    "Saturn": {
+      "exact_name": 31,
+      "manual_review": 30,
+      "no_model_match": 32,
+      "no_same_make_year": 3
+    },
+    "Scion": {
+      "exact_name": 33,
+      "manual_review": 1,
+      "no_model_match": 11
+    },
+    "Shelby": {
+      "no_same_make_year": 1
+    },
+    "Spyker": {
+      "no_same_make_year": 13
+    },
+    "Subaru": {
+      "exact_name": 27,
+      "manual_review": 202,
+      "no_model_match": 70,
+      "no_same_make_year": 12
+    },
+    "Suzuki": {
+      "exact_name": 45,
+      "manual_review": 66,
+      "no_model_match": 88,
+      "no_same_make_year": 2,
+      "normalized_name": 3
+    },
+    "Tecstar, LP": {
+      "no_same_make_year": 6
+    },
+    "Tesla": {
+      "exact_name": 9,
+      "manual_review": 137,
+      "no_model_match": 39
+    },
+    "Toyota": {
+      "exact_name": 242,
+      "manual_review": 684,
+      "no_model_match": 230,
+      "no_same_make_year": 7,
+      "normalized_name": 3
+    },
+    "VPG": {
+      "no_same_make_year": 5
+    },
+    "Vector": {
+      "no_same_make_year": 2
+    },
+    "Vinfast": {
+      "no_model_match": 9,
+      "no_same_make_year": 4
+    },
+    "Volkswagen": {
+      "exact_name": 244,
+      "manual_review": 106,
+      "no_model_match": 122,
+      "no_same_make_year": 7,
+      "normalized_name": 2
+    },
+    "Volvo": {
+      "exact_name": 24,
+      "manual_review": 37,
+      "no_model_match": 408
+    },
+    "smart": {
+      "exact_name": 4,
+      "manual_review": 15,
+      "no_model_match": 2,
+      "no_same_make_year": 14
+    }
+  },
+  "by_year": {
+    "1995": {
+      "exact_name": 101,
+      "manual_review": 108,
+      "no_model_match": 150,
+      "no_same_make_year": 24,
+      "normalized_name": 4
+    },
+    "1996": {
+      "exact_name": 84,
+      "manual_review": 93,
+      "no_model_match": 144,
+      "no_same_make_year": 6,
+      "normalized_name": 5
+    },
+    "1997": {
+      "exact_name": 93,
+      "manual_review": 98,
+      "no_model_match": 127,
+      "no_same_make_year": 1,
+      "normalized_name": 7
+    },
+    "1998": {
+      "exact_name": 88,
+      "manual_review": 119,
+      "no_model_match": 136,
+      "no_same_make_year": 4,
+      "normalized_name": 3
+    },
+    "1999": {
+      "exact_name": 91,
+      "manual_review": 111,
+      "no_model_match": 162,
+      "no_same_make_year": 2,
+      "normalized_name": 5
+    },
+    "2000": {
+      "exact_name": 110,
+      "manual_review": 120,
+      "no_model_match": 142,
+      "no_same_make_year": 1,
+      "normalized_name": 3
+    },
+    "2001": {
+      "exact_name": 120,
+      "manual_review": 159,
+      "no_model_match": 152,
+      "no_same_make_year": 2,
+      "normalized_name": 7
+    },
+    "2002": {
+      "exact_name": 104,
+      "manual_review": 171,
+      "no_model_match": 176,
+      "no_same_make_year": 5,
+      "normalized_name": 10
+    },
+    "2003": {
+      "exact_name": 101,
+      "manual_review": 195,
+      "no_model_match": 194,
+      "no_same_make_year": 7,
+      "normalized_name": 12
+    },
+    "2004": {
+      "exact_name": 108,
+      "manual_review": 201,
+      "no_model_match": 218,
+      "no_same_make_year": 12,
+      "normalized_name": 14
+    },
+    "2005": {
+      "exact_name": 109,
+      "manual_review": 207,
+      "no_model_match": 240,
+      "no_same_make_year": 5,
+      "normalized_name": 10
+    },
+    "2006": {
+      "exact_name": 132,
+      "manual_review": 228,
+      "no_model_match": 172,
+      "no_same_make_year": 14,
+      "normalized_name": 14
+    },
+    "2007": {
+      "exact_name": 127,
+      "manual_review": 251,
+      "no_model_match": 148,
+      "no_same_make_year": 39,
+      "normalized_name": 19
+    },
+    "2008": {
+      "exact_name": 137,
+      "manual_review": 244,
+      "no_model_match": 204,
+      "no_same_make_year": 22,
+      "normalized_name": 17
+    },
+    "2009": {
+      "exact_name": 132,
+      "manual_review": 253,
+      "no_model_match": 211,
+      "no_same_make_year": 8,
+      "normalized_name": 14
+    },
+    "2010": {
+      "exact_name": 148,
+      "manual_review": 254,
+      "no_model_match": 209,
+      "no_same_make_year": 7,
+      "normalized_name": 7
+    },
+    "2011": {
+      "exact_name": 154,
+      "manual_review": 285,
+      "no_model_match": 220,
+      "no_same_make_year": 16,
+      "normalized_name": 4
+    },
+    "2012": {
+      "exact_name": 168,
+      "manual_review": 287,
+      "no_model_match": 210,
+      "no_same_make_year": 15,
+      "normalized_name": 3
+    },
+    "2013": {
+      "exact_name": 169,
+      "manual_review": 300,
+      "no_model_match": 217,
+      "no_same_make_year": 11,
+      "normalized_name": 5
+    },
+    "2014": {
+      "exact_name": 185,
+      "manual_review": 335,
+      "no_model_match": 203,
+      "no_same_make_year": 19,
+      "normalized_name": 8
+    },
+    "2015": {
+      "exact_name": 194,
+      "manual_review": 390,
+      "no_model_match": 195,
+      "no_same_make_year": 7,
+      "normalized_name": 11
+    },
+    "2016": {
+      "exact_name": 170,
+      "manual_review": 386,
+      "no_model_match": 250,
+      "no_same_make_year": 12,
+      "normalized_name": 10
+    },
+    "2017": {
+      "exact_name": 176,
+      "manual_review": 445,
+      "no_model_match": 229,
+      "no_same_make_year": 5,
+      "normalized_name": 10
+    },
+    "2018": {
+      "exact_name": 178,
+      "manual_review": 459,
+      "no_model_match": 229,
+      "no_same_make_year": 13,
+      "normalized_name": 30
+    },
+    "2019": {
+      "exact_name": 168,
+      "manual_review": 458,
+      "no_model_match": 259,
+      "no_same_make_year": 14,
+      "normalized_name": 30
+    },
+    "2020": {
+      "exact_name": 149,
+      "manual_review": 447,
+      "no_model_match": 270,
+      "no_same_make_year": 27,
+      "normalized_name": 31
+    },
+    "2021": {
+      "exact_name": 148,
+      "manual_review": 477,
+      "no_model_match": 268,
+      "no_same_make_year": 9,
+      "normalized_name": 16
+    },
+    "2022": {
+      "exact_name": 122,
+      "manual_review": 516,
+      "no_model_match": 303,
+      "no_same_make_year": 4,
+      "normalized_name": 20
+    },
+    "2023": {
+      "exact_name": 133,
+      "manual_review": 534,
+      "no_model_match": 323,
+      "no_same_make_year": 5,
+      "normalized_name": 24
+    },
+    "2024": {
+      "exact_name": 108,
+      "manual_review": 548,
+      "no_model_match": 345,
+      "no_same_make_year": 11,
+      "normalized_name": 18
+    },
+    "2025": {
+      "exact_name": 96,
+      "manual_review": 541,
+      "no_model_match": 407,
+      "no_same_make_year": 9,
+      "normalized_name": 22
+    },
+    "2026": {
+      "exact_name": 52,
+      "manual_review": 488,
+      "no_model_match": 433,
+      "no_same_make_year": 38,
+      "normalized_name": 21
+    },
+    "2027": {
+      "exact_name": 1,
+      "manual_review": 17,
+      "no_model_match": 61,
+      "no_same_make_year": 264
+    }
+  },
+  "catalog_file_sha256": "de79c64817d5a36ef9f60e158618d3cb8638d81f5e325cee99661f9013be61da",
+  "epa_sha256": "1801f1889096b89812380efad61dc94bf642e062d1685e42953942c5b21ea712",
+  "epa_snapshot_date": "2026-09-18",
+  "generated_at": "2026-09-18T21:17:52.330485+00:00",
+  "linked_source_names": 4570,
+  "linked_variants": 8834,
+  "name_statuses": {
+    "exact_name": 4156,
+    "manual_review": 9725,
+    "no_model_match": 7207,
+    "no_same_make_year": 638,
+    "normalized_name": 414
+  },
+  "nhtsa_catalog_sha256": "d2e5f3887559b86df9720ab8e9eac82d22bc02203662156e904ce65a7786fc25",
+  "policy_version": "epa-nhtsa-names-v1",
+  "source_names": 22140,
+  "unique_linked_nhtsa_identities": 4570,
+  "variant_statuses": {
+    "exact_name": 8370,
+    "manual_review": 15468,
+    "no_model_match": 11370,
+    "no_same_make_year": 759,
+    "normalized_name": 464
+  },
+  "variants": 36431,
+  "warning": "Alineación de nombres, no validación predictiva ni aplicabilidad a cada versión/VIN. Ausencias no equivalen a cero recalls."
+}

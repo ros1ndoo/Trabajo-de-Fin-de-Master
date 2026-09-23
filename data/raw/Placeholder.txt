@@ -1,0 +1,1 @@
+Los datos raw voluminosos no se versionan. Consulte REPRODUCIBILITY.md y los manifiestos de procedencia.

@@ -1,107 +1,157 @@
-17-06-2026
 
-# Predicción de Fiabilidad y Valor en Lanzamientos Automovilísticos
+# AutoReliability — Predicción y análisis de recalls de seguridad
 
-Este repositorio contiene el desarrollo de un proyecto de Data Science enfocado en resolver la asimetría de información en el mercado automotriz. A través de la extracción, ingeniería y modelado de datos, el proyecto culmina en un dashboard interactivo que estima la **propensión a recalls de seguridad** de nuevos vehículos basándose en su historial técnico y en el comportamiento previo del fabricante.
+AutoReliability es un proyecto de Data Science desarrollado como Trabajo de Fin de Máster. Su objetivo es reducir la asimetría de información en la compra de vehículos mediante el análisis de registros históricos de campañas de retirada por defectos de seguridad (*recalls*).
 
-> ⚠️ **Nota importante sobre la variable objetivo:** El índice producido por este proyecto es un **proxy construido a partir de registros oficiales de *recalls* de la NHTSA**, no una medida directa de fiabilidad mecánica general del día a día. Un *recall* de seguridad no equivale a una avería mecánica cotidiana. Esta distinción se mantiene explícita en todas las capas del proyecto.
+El proyecto combina datos técnicos de vehículos con registros oficiales de la **National Highway Traffic Safety Administration (NHTSA)** para generar un índice estadístico y facilitar la consulta y comparación de vehículos mediante una aplicación web interactiva.
 
----
+> **Importante:** El índice es un indicador indirecto basado en recalls de seguridad. No representa la fiabilidad mecánica general ni la probabilidad individual de sufrir una avería.
 
-## 1. El Problema y la Solución
+## 1. Funcionalidades
 
-**El Problema:** Al adquirir un vehículo, los consumidores e inversores de flotas toman decisiones guiados principalmente por campañas de marketing. Existe una profunda asimetría de información respecto a la propensión a fallos de seguridad que un modelo puede manifestar, información que solo se conoce empíricamente tras años de rodaje en el mercado.
+La aplicación, desarrollada con Streamlit, permite:
 
-**La Solución:** Un modelo predictivo que anticipa el índice de propensión a *recalls* de un vehículo antes de que acumule años en el mercado. El modelo se apoya en:
-- Especificaciones técnicas del vehículo (cilindrada, potencia, categoría).
-- Historial de *recalls* del fabricante en los **3 años previos al lanzamiento** que se predice.
-
-> **Alcance del Proyecto:** Para garantizar la consistencia analítica y la precisión de los datos oficiales, el alcance está acotado estrictamente al **mercado estadounidense** y a vehículos fabricados entre **1995 y la actualidad**.
-
----
-
-## 2. Arquitectura y Fuentes de Datos
-
-El pipeline de datos sigue una arquitectura de medallón (**Raw → Processed → Gold**) integrando dos fuentes concretas y cerradas:
-
-1. **NHTSA API (National Highway Traffic Safety Administration):**
-   - **Tipo:** API REST (JSON).
-   - **Aporte:** Registros oficiales gubernamentales de *recalls* por marca, modelo y año. Solo se utiliza la **ventana de los primeros 3 años** desde el lanzamiento de cada modelo para asegurar la comparabilidad entre cohortes de distintos años.
-
-2. **Kaggle — "Car Features and MSRP" (CooperUnion):**
-   - **Tipo:** Fichero estático (CSV).
-   - **Aporte:** Especificaciones técnicas detalladas (cilindrada, potencia, categoría, precio de lanzamiento) filtradas para el mercado norteamericano. Fuente identificada y estable.
-
-### Estructura del repositorio
-
-```
-├── data/
-│   ├── raw/          # Datos originales inmutables (JSON de NHTSA + CSV de Kaggle)
-│   ├── processed/    # SQLite transaccional para limpieza y cruce de fuentes
-│   └── gold/         # gold_us_car_reliability.parquet — dataset final listo para ML
-├── docs/
-│   ├── entregas/     # Documentación de diseño y decisiones de arquitectura
-│   └── assets/       # Mockup del frontal 
-├── notebooks/        # EDA y experimentación
-└── src/              # Scripts Python de producción (ingesta, limpieza, modelo)
-```
-
----
-
-## 3. Variable Objetivo: `indice_fiabilidad_100`
-
-La variable objetivo se construye en tres fases para garantizar su comparabilidad y defendibilidad:
-
-1. **Ponderación por gravedad de recall** usando palabras clave en la descripción NHTSA (Crítico ×3.0 / Moderado ×1.5 / Leve ×1.0).
-2. **Ventana de observación fija de 3 años:** Solo se contabilizan los *recalls* emitidos durante los primeros 3 años desde el lanzamiento. Solo participan en el entrenamiento los modelos que hayan completado dicha ventana. Esto hace comparable un coche de 2005 con uno de 2022.
-3. **Normalización Z-score intra-segmento:** Calculada **exclusivamente sobre el conjunto de entrenamiento** y aplicada después al resto de conjuntos para evitar data leakage. El resultado se escala a un rango de 0 a 100.
-
-### Anti-leakage garantizado
-
-- Los *recalls* del propio vehículo consultado **no entran como features** de predicción.
-- La variable `hist_fiabilidad_marca` se construye únicamente con datos conocidos **antes** del lanzamiento del modelo que se está prediciendo.
-- El Z-score del target no se calcula con todo el dataset antes de separar train y test.
-
----
-
-## 4. Stack Tecnológico
-
-### Ingesta y Procesamiento (Data Engineering)
-- **Requests & JSON:** Extracción por lotes (*batch*) a la API de la NHTSA gestionando *rate limiting*.
-- **Pandas & NumPy:** Manipulación, limpieza y Feature Engineering.
-- **TheFuzz:** *Fuzzy Matching* (`token_set_ratio`) para resolver inconsistencias semánticas entre nomenclaturas de Kaggle y la NHTSA. Los cruces quedan auditados en `audit_fuzzy_matches.csv` con umbrales: Auto ≥90 / Revisión manual 75–89 / Rechazo <75.
-- **SQLite3:** Motor relacional intermedio para transformaciones SQL sobre el dataset unificado.
-
-### Modelado Predictivo (Machine Learning)
-- **Scikit-Learn:** Pipelines de preprocesamiento (escalado, One-Hot / Target Encoding) y validación temporal estricta (Train 1995–2018 / Valid 2019–2021 / Test 2022+).
-- **Ridge Regression:** Modelo principal por su interpretabilidad mediante coeficientes.
-- **XGBoost / Random Forest:** Alternativa avanzada; seleccionada solo si supera a Ridge en >10% de reducción de MAE.
-- **SHAP:** Explicabilidad del modelo avanzado si se selecciona.
-
-### Visualización y Producto Final (MVP)
-- **Matplotlib & Seaborn:** EDA.
-- **Streamlit + Plotly:** Framework de despliegue del dashboard interactivo MVP.
-- **Bootstrap 5 + Chart.js:** Mockup de alta fidelidad del frontal (modo oscuro).
+- Consultar vehículos por marca, modelo y año.
+- Obtener un índice histórico de propensión a recalls.
+- Visualizar características técnicas, historial del fabricante y factores explicativos.
+- Comparar los resultados de dos vehículos.
+- Consultar campañas oficiales de recalls de la NHTSA.
+- Exportar los resultados en CSV y PDF.
 
 ![Mockup del frontal](docs/assets/05_mockup_frontal.png)
 
+## 2. Fuentes y procesamiento de datos
+
+El proyecto utiliza las siguientes fuentes:
+
+- **NHTSA:** registros oficiales de campañas de retirada por defectos de seguridad.
+- **CooperUnion — Car Features and MSRP:** especificaciones técnicas de vehículos del mercado estadounidense.
+- **EPA/DOE:** fuentes complementarias utilizadas para investigar la ampliación de la cobertura temporal.
+
+Los datos se procesan mediante una arquitectura **Raw → Processed → Gold**, que incluye limpieza, normalización, cruce de identidades y construcción del conjunto de datos utilizado para entrenar los modelos.
+
+El predictor publicado utiliza datos técnicos de vehículos comprendidos entre 1995 y 2017. La consulta independiente de recalls oficiales permite acceder a registros de vehículos más recientes.
+
+## 3. Modelo predictivo
+
+### Construcción del índice
+
+La variable objetivo se construye a partir de las campañas de recalls registradas durante los tres primeros años-modelo de cada vehículo.
+
+Las campañas reciben una ponderación heurística según las palabras clave de sus descripciones:
+
+| Categoría | Peso |
+|---|---:|
+| Crítica | 3,0 |
+| Moderada | 1,5 |
+| Baja o no clasificada | 1,0 |
+
+La suma ponderada se normaliza respecto a las estadísticas del segmento, calculadas sobre los datos de entrenamiento, para obtener un índice de 0 a 100.
+
+**Una puntuación mayor indica una menor carga histórica estimada de recalls.** No representa un porcentaje de fiabilidad ni una probabilidad individual de avería.
+
+### Entrenamiento y selección
+
+Se han evaluado tres alternativas:
+
+- Baseline histórico por marca y categoría.
+- Ridge Regression.
+- Random Forest.
+
+El modelo seleccionado actualmente es el **baseline histórico**, que utiliza la media del índice de los vehículos de referencia pertenecientes a una misma marca y categoría.
+
+Por tanto, dos vehículos del mismo grupo pueden recibir la misma estimación aunque tengan diferentes características técnicas o años de fabricación.
+
+### Resultados de evaluación
+
+| Métrica | Resultado |
+|---|---:|
+| Vehículos de entrenamiento | 290 |
+| Vehículos de validación | 90 |
+| Vehículos de test | 819 |
+| MAE de test | 12,1984 |
+| RMSE de test | 17,0354 |
+
+La evaluación utiliza una separación temporal de los datos. Las métricas corresponden a la población histórica evaluada y no garantizan el mismo rendimiento para cualquier vehículo.
+
+El modelo seleccionado no ha demostrado superar al baseline con un error homogéneo entre grupos, uno de los objetivos metodológicos originales del proyecto.
+
+## 4. Tecnologías utilizadas
+
+| Área | Tecnologías |
+|---|---|
+| Lenguaje | Python |
+| Procesamiento de datos | Pandas, NumPy |
+| Almacenamiento | SQLite, Parquet |
+| Machine Learning | Scikit-learn |
+| Visualización | Streamlit, Plotly, Matplotlib |
+| Informes | ReportLab |
+| Pruebas | Pytest, Ruff, GitHub Actions |
+
+El proyecto también incorpora una integración opcional con Ollama para generar explicaciones a partir de información proporcionada por el modelo. Cuando no está configurada, utiliza explicaciones deterministas.
+
+## 5. Instalación y ejecución
+
+### Requisitos
+
+- Python 3.10 o superior.
+- Git.
+- Conexión a Internet para la instalación inicial y las consultas externas.
+
+Clonar el repositorio:
+
+```bash
+git clone https://github.com/ros1ndoo/Trabajo-de-Fin-de-Master.git
+cd Trabajo-de-Fin-de-Master
+```
+
+En Windows, preparar el entorno desde PowerShell:
+
+```powershell
+.\scripts\setup.ps1
+```
+
+Iniciar la aplicación:
+
+```powershell
+.\scripts\start.ps1
+```
+
+La aplicación estará disponible en:
+
+http://127.0.0.1:8501
+
+El repositorio incluye el modelo entrenado y los datasets Gold necesarios para cargar el predictor publicado. No es necesario volver a entrenarlo para utilizar la aplicación.
+
+### Pruebas automatizadas
+
+```bash
+python -m pytest -q
+python -m ruff check src tests app.py
+```
+
+GitHub Actions ejecuta estas comprobaciones utilizando Python 3.10 y 3.12.
+
+## 6. Limitaciones y trabajo futuro
+
+AutoReliability es un prototipo académico funcional con las siguientes limitaciones:
+
+- **Cobertura temporal:** el predictor publicado utiliza especificaciones técnicas hasta 2017 y no está validado para lanzamientos actuales.
+- **Representatividad:** existen vehículos e identidades no resueltas que pueden introducir sesgos de selección.
+- **Capacidad predictiva:** el baseline utiliza una referencia histórica por marca y categoría, sin distinguir necesariamente entre modelos concretos del mismo grupo.
+- **Interpretación:** los recalls no permiten medir directamente la fiabilidad mecánica ni determinar el estado de una unidad individual.
+- **Validación:** los errores varían entre grupos y no se ha demostrado una mejora predictiva homogénea respecto al baseline.
+
+Las futuras líneas de desarrollo incluyen ampliar la cobertura técnica, mejorar la representación de vehículos sin campañas registradas, resolver los cruces de identidades pendientes y evaluar nuevos modelos mediante validación temporal independiente.
+
+## 7. Conclusión
+
+AutoReliability integra adquisición y procesamiento de datos, ingeniería de características, entrenamiento de modelos y desarrollo de una aplicación interactiva.
+
+El resultado es una herramienta que permite consultar y contextualizar información histórica sobre recalls de seguridad, proporcionando una referencia estadística complementaria para investigar vehículos antes de su compra.
+
+El proyecto demuestra la aplicación práctica de técnicas de Data Science a un problema real, manteniendo explícitas las limitaciones de los datos y del modelo predictivo.
+
 ---
 
-## 5. Plan de Contingencia
-
-Si la tasa de pérdida de modelos tras el *Fuzzy Matching* supera el **40%** (registros huérfanos), el proyecto prescindirá de la variable de *recalls* de la API. La alternativa directa será predecir la **depreciación económica del vehículo**, cruzando el MSRP de Kaggle con precios de segunda mano para calcular la pérdida de valor según especificaciones técnicas.
-
----
-
-## 6. Roadmap
-
-1.  Definición del problema, fuentes y viabilidad *(Entrega 02)*
-2.  Diseño del modelo de datos y capa gold *(Entrega 03)*
-3.  Diseño del análisis y estrategia de modelado *(Entrega 04)*
-4.  Mockup del frontal Bootstrap 5 modo oscuro *(Entrega 05)*
-5.  Ingesta masiva y script de extracción automatizada de la API NHTSA
-6.  Pipeline de limpieza y *Fuzzy Matching* auditado
-7.  Consolidación de la capa Gold en Parquet
-8.  Análisis Exploratorio de Datos (EDA)
-9.  Entrenamiento, validación temporal y ajuste del modelo
-10.  Despliegue del dashboard en Streamlit
+**AutoReliability — Trabajo de Fin de Máster en Data Science.**

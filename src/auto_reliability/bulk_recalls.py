@@ -185,7 +185,7 @@ class BulkRecallStore:
             return json.loads(connection.execute("SELECT payload FROM metadata").fetchone()[0])
 
     def catalog(self) -> pd.DataFrame:
-        """Return independent official candidates with canonical matching keys."""
+        """Return recall-bearing official candidates, NOT an outcome-independent universe."""
         with self._connect() as connection:
             frame = pd.read_sql_query("SELECT * FROM vehicles ORDER BY make, model, year", connection)
         frame = frame.rename(columns={"vehicle_id": "nhtsa_vehicle_id", "make": "marca", "model": "modelo",

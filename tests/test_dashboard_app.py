@@ -205,7 +205,7 @@ def test_coverage_does_not_hide_status_or_ingestion_limitations():
 
 def test_missing_evidence_reports_error_without_fabricated_score():
     app = _estimate(_select(_start(DashboardServiceStub(error=True))))
-    assert any("evidencia histórica madura" in item.value for item in app.error)
+    assert any("No se puede emitir una estimación" in item.value for item in app.error)
     assert "ar_current_result" not in app.session_state
 
 

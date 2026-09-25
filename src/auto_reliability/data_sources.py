@@ -347,6 +347,8 @@ def ingest_cooperunion_csv(
         "source_rows": initial_rows,
         "kept_rows": len(filtered),
         "dropped_invalid_key_or_year": int(initial_rows - len(filtered)),
+        "dropped_missing_identity_or_year": int((~valid_key).sum()),
+        "dropped_before_min_year": int((valid_key & ~valid_year).sum()),
         "min_year": min_year,
         "source_path": str(path),
     }
@@ -605,8 +607,8 @@ class NHTSARecallClient:
         """Fetch an independent NHTSA vPIC vehicle catalogue snapshot.
 
         vPIC lists NHTSA vehicle make/model/year entries irrespective of whether
-        the model currently has a recall.  This is why it can validate a
-        legitimate ``Count: 0`` response from the recalls endpoint.
+        the model currently has a recall. Presence establishes identity evidence,
+        not equivalence with recall-service names or proof of a zero label.
         """
 
         make_text, model_year = str(make).strip(), int(year)
@@ -636,7 +638,7 @@ class NHTSARecallClient:
 
         This endpoint is useful for discovering model spellings associated with
         recall issues.  It must not be used as proof that an absent vehicle has
-        zero recalls; :meth:`fetch_vpic_models_for_make_year` serves that role.
+        zero recalls. vPIC supplies separate identity evidence, not zero labels.
         """
 
         make_text, model_year = str(make).strip(), int(year)

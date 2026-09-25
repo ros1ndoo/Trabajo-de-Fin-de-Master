@@ -151,6 +151,10 @@ def build_prediction_report_pdf(
             Paragraph(escape(str(_value(prediction, "mensaje", ""))), body),
             Paragraph(f"<b>Modelo:</b> {escape(str(_value(prediction, 'modelo_usado')))}. "
                       f"<b>Fecha:</b> {escape(str(_value(prediction, 'fecha_ejecucion')))}", body),
+            Paragraph("<b>Trazabilidad:</b> " + escape(str({
+                key: prediction.get(key) for key in ("version_modelo", "version_datos", "version_escala",
+                                                      "evaluacion_retrospectiva", "evidencia_oficial")
+            })), body),
             Spacer(1, 0.4 * cm),
             Paragraph(
                 "<b>Limitacion importante:</b> este indice es un proxy construido a partir "

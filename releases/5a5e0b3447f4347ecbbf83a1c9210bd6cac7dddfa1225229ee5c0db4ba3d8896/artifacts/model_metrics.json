@@ -4,31 +4,31 @@
       "available": true,
       "error": null,
       "validation": {
-        "mae": 10.5771,
+        "mae": 10.7412,
         "n": 90,
-        "rmse": 13.7543
+        "rmse": 14.0394
       }
     },
     "random_forest": {
       "available": true,
       "error": null,
       "validation": {
-        "mae": 10.8236,
+        "mae": 10.746,
         "n": 90,
-        "rmse": 13.5027
+        "rmse": 13.3846
       }
     },
     "ridge": {
       "available": true,
       "error": null,
       "validation": {
-        "mae": 10.9386,
+        "mae": 11.3099,
         "n": 90,
-        "rmse": 13.4978
+        "rmse": 13.8987
       }
     }
   },
-  "dataset_fingerprint": "cd4ba765b6a3a391e4870c2e13a2f009aa9fe0d69593471d0feda973ed674367",
+  "dataset_fingerprint": "9fff9b7308f3a581dcb02daa29dd1a0a605ca2bb80900595062d6c051fd169e6",
   "excluded_feature": "score_recalls_bruto (outcome leakage prevention)",
   "features": [
     "marca",
@@ -38,16 +38,16 @@
     "hist_fiabilidad_marca"
   ],
   "final_test": {
-    "mae": 12.1537,
+    "mae": 12.1984,
     "n": 819,
-    "rmse": 16.9991
+    "rmse": 17.0354
   },
   "fuente_demo": false,
-  "generated_at": "2026-09-25T13:35:46+00:00",
+  "generated_at": "2026-09-18T20:56:35+00:00",
   "rows_dropped_invalid_target_or_year": 0,
   "selection": {
     "advanced_improvement_threshold_pct": 10.0,
-    "advanced_reduction_vs_ridge_pct": 1.0513,
+    "advanced_reduction_vs_ridge_pct": 4.9859,
     "reason": "El baseline obtiene el menor MAE entre los candidatos elegibles. Random Forest no cumple el umbral de mejora exigido frente a Ridge.",
     "rule": "Random Forest is selected only when validation MAE improves on Ridge by > threshold.",
     "selected_model": "baseline"
@@ -57,7 +57,7 @@
     "configured_validation_end_year": 2011,
     "label_maturity_years": 3,
     "rows_embargoed_before_test": 88,
-    "rows_embargoed_before_validation": 75,
+    "rows_embargoed_before_validation": 74,
     "strategy": "documented_fixed_years_label_maturity_embargo",
     "test": {
       "max_year": 2017,
@@ -67,7 +67,7 @@
     "train": {
       "max_year": 2005,
       "min_year": 1995,
-      "rows": 287
+      "rows": 290
     },
     "validation": {
       "max_year": 2009,
@@ -78,8 +78,8 @@
   "target": "indice_fiabilidad_100",
   "target_normalizer": {
     "formula": "clip(50 - 10 * ((raw_recall_score - mean_train_segment) / std_train_segment), 0, 100)",
-    "global_mean": 2.5801393728222997,
-    "global_std": 2.905393755166635,
+    "global_mean": 2.532758620689655,
+    "global_std": 2.8988337685348737,
     "observation_window_years": 3,
     "raw_score_column": "score_recalls_bruto",
     "segment_statistics": {
@@ -100,16 +100,16 @@
         "std": 3.6652774223661755
       },
       "cargo van": {
-        "mean": 0.3333333333333333,
-        "std": 0.4714045207910317
+        "mean": 0.2,
+        "std": 0.4
       },
       "convertible": {
         "mean": 2.65625,
         "std": 2.111861959859119
       },
       "coupe": {
-        "mean": 1.3372093023255813,
-        "std": 1.6164881912564675
+        "mean": 1.2560975609756098,
+        "std": 1.4697019409934469
       },
       "crew cab pickup": {
         "mean": 1.125,
@@ -124,12 +124,12 @@
         "std": 2.0718468346050147
       },
       "passenger van": {
-        "mean": 6.6,
-        "std": 4.810405388322278
+        "mean": 4.714285714285714,
+        "std": 5.041663152863227
       },
       "sedan": {
-        "mean": 3.154639175257732,
-        "std": 3.0429577519437867
+        "mean": 3.122448979591837,
+        "std": 3.043947846513616
       },
       "wagon": {
         "mean": 2.0,

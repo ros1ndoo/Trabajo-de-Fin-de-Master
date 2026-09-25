@@ -8,6 +8,7 @@ clone has no data artefacts yet.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from collections.abc import Mapping
@@ -77,8 +78,9 @@ class ReliabilityService:
         *,
         auto_bootstrap_demo: bool | None = None,
     ) -> None:
-        self.paths = paths or ProjectPaths.discover()
-        self.project_paths = self.paths
+        from .releases import serving_paths
+        self.project_paths = paths or ProjectPaths.discover()
+        self.paths = serving_paths(self.project_paths)
         if auto_bootstrap_demo is None:
             auto_bootstrap_demo = os.getenv("AUTO_RELIABILITY_AUTO_DEMO", "0") == "1"
         self.auto_bootstrap_demo = bool(auto_bootstrap_demo)
@@ -88,6 +90,7 @@ class ReliabilityService:
         self._demo_mode = False
         self._artifact_error = ""
         self._artifact_checked = False
+        self._model_digest: str | None = None
         self._runtime_revision: tuple | None = None
 
     def data_revision(self) -> tuple:
@@ -116,7 +119,7 @@ class ReliabilityService:
                 message += " No incluye especificaciones de lanzamientos actuales."
         if self._artifact_error:
             message += " " + self._artifact_error
-        manifest_path = self.paths.processed_dir / "pipeline_manifest.json"
+        manifest_path = self.project_paths.processed_dir / "pipeline_manifest.json"
         warnings: tuple[str, ...] = ()
         if manifest_path.exists() and not self._demo_mode:
             try:
@@ -137,7 +140,7 @@ class ReliabilityService:
 
     def inventory_alignment_status(self) -> dict[str, Any] | None:
         """Read optional independent-inventory progress, never prediction inputs."""
-        path = self.paths.processed_dir / "inventory_resolution" / "latest.json"
+        path = self.project_paths.processed_dir / "inventory_resolution" / "latest.json"
         if not path.exists():
             return None
         try:
@@ -172,6 +175,18 @@ class ReliabilityService:
                 ~inference.get("id_vehiculo_ano", pd.Series(dtype=str)).astype(str).isin(gold_ids)
             ].copy()
             catalog = pd.concat([gold, only_inference], ignore_index=True, sort=False)
+            # Keep diagnostics from the SAME pinned inference artifact even for
+            # Gold rows. Never read mutable working SQLite to enrich a release.
+            diagnostic_columns = [column for column in (
+                "identity_status", "query_status", "candidate_query_status", "window_status",
+                "included_in_gold", "primary_reason", "window_outcome", "evidence_as_of",
+                "match_status",
+            ) if column in inference]
+            if diagnostic_columns:
+                catalog = catalog.drop(columns=diagnostic_columns, errors="ignore").merge(
+                    inference[["id_vehiculo_ano", *diagnostic_columns]],
+                    on="id_vehiculo_ano", how="left", validate="one_to_one",
+                )
         if catalog.empty:
             self._catalog = catalog
             return catalog.copy()
@@ -212,6 +227,11 @@ class ReliabilityService:
             "modelo_usado": _human_model_name(artifact.model_name),
             "es_baseline": artifact.model_name == "baseline" or isinstance(artifact.estimator, BrandSegmentMeanBaseline),
             "fallback": False,
+            "version_modelo": self._model_digest,
+            "version_datos": artifact.metadata.get("dataset_fingerprint"),
+            "version_escala": hashlib.sha256(json.dumps(
+                artifact.metadata.get("target_normalizer", {}), sort_keys=True
+            ).encode()).hexdigest(),
             "fuente_demo": self._demo_mode or _as_bool(row.get("fuente_demo", False)),
             "explicacion_factores": summarize_attributions(factors),
             "factores": factors,
@@ -365,7 +385,11 @@ class ReliabilityService:
             return self._artifact
         self._artifact_checked = True
         try:
+            model_bytes_digest = hashlib.sha256(self.paths.model_path.read_bytes()).hexdigest()
             self._artifact = load_model_artifact(self.paths.model_path)
+            if hashlib.sha256(self.paths.model_path.read_bytes()).hexdigest() != model_bytes_digest:
+                raise ValueError("Model changed during loading")
+            self._model_digest = model_bytes_digest
         except (FileNotFoundError, TypeError, OSError, ValueError, EOFError):
             return None
         signature = self._artifact.metadata.get("dataset_fingerprint")
@@ -489,6 +513,9 @@ class ReliabilityService:
             "modelo_usado": "Baseline histórico",
             "es_baseline": True,
             "fallback": True,
+            "version_modelo": None,
+            "version_datos": dataset_fingerprint(gold),
+            "version_escala": f"reserva-historica-no-validada-{year}",
             "fuente_demo": self._demo_mode,
             "mensaje": f"{reason} Se usa {source} anterior al lanzamiento.",
             "explicacion_factores": "La referencia utiliza únicamente cohortes anteriores y no incorpora recalls del vehículo consultado.",

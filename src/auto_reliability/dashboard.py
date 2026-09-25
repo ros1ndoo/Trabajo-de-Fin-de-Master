@@ -333,6 +333,42 @@ def _call_prediction(service: Any, marca: str, modelo: str, ano_fabricacion: int
     return result
 
 
+def observation_notice(row: Mapping[str, Any]) -> str:
+    """Describe stored observation evidence, never the reliability of a car.
+
+    Old release catalogs lack the new evidence contract. Their matching status
+    can explain an exclusion but cannot certify an empty historical response.
+    """
+    reason = str(row.get("primary_reason", ""))
+    if reason in {"", "nan", "None", "<NA>"}:
+        reason = str(row.get("match_status", ""))
+    messages = {
+        "manual_review": "Identidad pendiente de revisión: no se atribuyen campañas del candidato a este vehículo.",
+        "rejected": "Cruce de identidad rechazado: no hay un historial oficial atribuible por esta ruta.",
+        "manual_rejected": "Cruce de identidad rechazado en revisión: no se atribuye el historial del candidato.",
+        "no_candidate": "Sin candidato oficial compatible en el catálogo utilizado. Esto no demuestra ausencia de recalls.",
+        "not_in_matching_scope": "Vehículo fuera del alcance de la ingesta registrada; no hay observación validada.",
+        "not_queried": "Sin consulta validada registrada en esta versión.",
+        "not_recorded": "No consta una respuesta oficial validada; no se interpreta como cero recalls.",
+        "query_failed": "La consulta registrada falló. La falta de respuesta no es evidencia de fiabilidad.",
+        "unverified_zero_result": "Respuesta vacía sin evidencia suficiente para acreditar cero recalls.",
+        "incomplete_window": "La ventana de observación aún no está completa; no hay una etiqueta final comparable.",
+    }
+    message = messages.get(reason)
+    if message is None and reason == "included":
+        outcome = str(row.get("window_outcome", "unknown"))
+        if outcome == "zero_in_window":
+            message = "Cero campañas observadas en la ventana de tres años; no significa cero en todo el histórico ni fiabilidad garantizada."
+        elif outcome == "positive_in_window":
+            message = "Campañas observadas dentro de la ventana de tres años, según la evidencia del conjunto publicado."
+    if message is None:
+        message = "Esta versión no aporta un diagnóstico detallado de observación para este vehículo; no se deduce ausencia de recalls."
+    observed_at = str(row.get("evidence_as_of", ""))
+    if observed_at and observed_at not in {"nan", "None", "<NA>"}:
+        message += f" Fecha de evaluación de la ventana: {observed_at}."
+    return message + " Este estado es independiente de una posible referencia predictiva de marca/categoría y de la consulta oficial actual."
+
+
 def _select_rows(catalog: Any, marca: str, modelo: str, ano_fabricacion: int) -> Any:
     pandas = _require_pandas()
     if catalog is None or catalog.empty:
@@ -643,6 +679,10 @@ def summary_frame(result: Mapping[str, Any]) -> Any:
         "naturaleza_indice": "Proxy de recalls de seguridad; no mide fiabilidad mecánica general.",
         "hist_fiabilidad_marca": result.get("hist_fiabilidad_marca"),
         "fecha_ejecucion": result.get("fecha_ejecucion"),
+        "version_modelo": result.get("version_modelo"),
+        "version_datos": result.get("version_datos"),
+        "version_escala": result.get("version_escala"),
+        "evidencia_oficial": str(result.get("evidencia_oficial", {})),
         "explicacion_factores": _narrative(result),
     }
     for label, value in features.items():
@@ -721,10 +761,10 @@ def _inject_styles(st: Any) -> None:
 
 def _score_status(score: float) -> tuple[str, str, str]:
     if score >= 70:
-        return "#35d49a", "Menor propensión estimada", "El histórico disponible sitúa el proxy en la zona más favorable de la escala."
+        return "#35d49a", "Tramo superior del índice", "Los cortes 45/70 son convenciones visuales, no umbrales de seguridad validados."
     if score >= 45:
-        return "#f8b84e", "Propensión estimada intermedia", "Interpreta el resultado junto al error esperado y al contexto del segmento."
-    return "#fb7185", "Mayor propensión estimada", "El histórico disponible sitúa el proxy en la zona de mayor propensión a recalls."
+        return "#f8b84e", "Tramo intermedio del índice", "Los cortes 45/70 son convenciones visuales, no umbrales de seguridad validados."
+    return "#fb7185", "Tramo inferior del índice", "Los cortes 45/70 son convenciones visuales, no umbrales de seguridad validados."
 
 
 def _mae_label(value: Any) -> str:
@@ -902,7 +942,34 @@ def _comparison_entry(result: Mapping[str, Any]) -> dict[str, Any]:
         "Segmento": _text(result.get("categoria_vehiculo")),
         "Método": _text(result.get("modelo_usado")),
         "Origen": "Demostración sintética" if _as_bool(result.get("fuente_demo")) else "Datos reales",
+        "Retrospectiva": _as_bool(result.get("evaluacion_retrospectiva")),
+        "Reserva sin validar": _as_bool(result.get("fallback")),
+        "Versión modelo": result.get("version_modelo"),
+        "Versión datos": result.get("version_datos"),
+        "Escala": result.get("version_escala"),
+        "Fecha": result.get("fecha_ejecucion"),
+        "Limitaciones": result.get("mensaje", ""),
+        "Evidencia oficial": str(result.get("evidencia_oficial", {})),
     }
+
+
+def comparison_warnings(entries: Sequence[Mapping[str, Any]]) -> list[str]:
+    """Flag non-comparable estimates; never derive a purchase ranking."""
+    warnings = []
+    for field in ("Versión modelo", "Versión datos", "Escala"):
+        if any(not entry.get(field) for entry in entries):
+            warnings.append(f"{field}: falta trazabilidad; no se puede confirmar comparabilidad.")
+        elif len({entry[field] for entry in entries}) > 1:
+            warnings.append(f"{field}: los resultados proceden de versiones diferentes; vuelva a calcularlos.")
+    if any(entry.get("Reserva sin validar") for entry in entries):
+        warnings.append("Hay referencias de reserva sin evaluación propia: no equivalen al modelo validado.")
+    if any(entry.get("Retrospectiva") for entry in entries):
+        warnings.append("Hay consultas retrospectivas: no representan predicciones disponibles al lanzamiento.")
+    if len({entry.get("Origen") for entry in entries}) > 1:
+        warnings.append("Se mezclan datos reales y sintéticos; no interprete sus diferencias como evidencia.")
+    if len({entry.get("Segmento") for entry in entries}) > 1:
+        warnings.append("Son segmentos distintos: el índice es relativo a su segmento, no riesgo absoluto comparable.")
+    return warnings
 
 
 def _add_to_comparison(st: Any, result: Mapping[str, Any]) -> None:
@@ -922,6 +989,10 @@ def _render_comparison(st: Any) -> None:
     pandas = _require_pandas()
     with st.expander(f"Comparación guardada ({len(entries)}/2)", expanded=len(entries) == 2):
         st.caption("Guarda otro resultado para contrastarlo. 100 indica menor propensión histórica a recalls.")
+        st.info("Comparación descriptiva, no recomendación de compra. El MAE no es un intervalo individual "
+                "y una diferencia de puntuación no demuestra superioridad estadística.")
+        for warning in comparison_warnings(entries):
+            st.warning(warning)
         comparison = pandas.DataFrame(entries).drop(columns=["id"], errors="ignore")
         st.dataframe(comparison, width="stretch", hide_index=True)
         if st.button("Borrar comparación", key="ar_clear_comparison"):
@@ -1107,7 +1178,9 @@ def _render_result(st: Any, service: Any | None, result: Mapping[str, Any]) -> N
             "Historial previo de marca" if brand_history else "Historial previo disponible",
             f"{history_score:.2f} pts" if history_score is not None else "No disponible",
         )
-        st.caption("Carga ponderada de recalls de cohortes previas; no incorpora recalls posteriores del vehículo consultado.")
+        st.caption("Media de cohortes maduras de lanzamiento entre año−5 y año−3; "
+                   "no equivale al conteo de campañas de los tres años calendario previos. "
+                   "No incorpora recalls posteriores del vehículo consultado.")
         if market_history:
             st.caption("Sin historial suficiente de esta marca: se utiliza la referencia del mercado disponible.")
 
@@ -1410,6 +1483,10 @@ def run_dashboard(service: Any | None = None) -> None:
             selector_column, score_column = st.columns([1.12, .88], gap="large")
             with selector_column:
                 marca, modelo, ano_fabricacion, evaluate = _render_selector(st, catalog)
+                if marca and modelo and ano_fabricacion is not None:
+                    selected_evidence = _select_rows(catalog, marca, modelo, ano_fabricacion)
+                    if not selected_evidence.empty:
+                        st.info(observation_notice(selected_evidence.iloc[0].to_dict()))
             if evaluate:
                 if not marca or not modelo or ano_fabricacion is None:
                     st.session_state["ar_last_error"] = "Selecciona marca, modelo y año antes de solicitar una estimación."
@@ -1430,8 +1507,7 @@ def run_dashboard(service: Any | None = None) -> None:
                         st.session_state.pop("ar_current_result", None)
                         if exc.__class__.__name__ == "InsufficientEvidenceError":
                             st.session_state["ar_last_error"] = (
-                                "No existe evidencia histórica madura suficiente para emitir una estimación defendible "
-                                f"para este vehículo. {exc}"
+                                f"No se puede emitir una estimación para esta consulta. {exc}"
                             )
                         else:
                             st.session_state["ar_last_error"] = (

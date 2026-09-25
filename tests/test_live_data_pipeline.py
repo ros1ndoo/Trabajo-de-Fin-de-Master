@@ -73,6 +73,15 @@ def test_pipeline_uses_independent_names_and_never_labels_failed_or_unverified_z
     result = run_pipeline(source, paths=ProjectPaths(tmp_path / "project"), train_end_year=2010,
                           snapshot_date="2026-09-18", as_of_date="2026-09-18")
     assert result.gold["modelo"].tolist() == ["explorer"]
+    evidence = result.inference_catalog.set_index("modelo")
+    assert evidence.loc["explorer", "window_outcome"] == "positive_in_window"
+    assert evidence.loc["unknownzero", "primary_reason"] == "unverified_zero_result"
+    assert evidence.loc["apifailure", "primary_reason"] == "query_failed"
+    assert evidence.loc["apifailure", "window_outcome"] == "unknown"
+    manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
+    assert manifest["observation_evidence"]["primary_reason"] == {
+        "included": 1, "query_failed": 1, "unverified_zero_result": 1,
+    }
     assert result.gold["score_recalls_bruto"].tolist() == [3.0]
     statuses = result.matches.set_index("modelo_tecnico")["match_status"].to_dict()
     assert statuses["unknownzero"] == "unverified_zero_result"

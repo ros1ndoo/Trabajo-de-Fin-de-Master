@@ -1,0 +1,8 @@
+{
+  "files": {
+    "artifacts/model_metrics.json": "b001e9c4c897f586373bd3d5af3bb5958b066f6e674dd88ee9612609e517e980",
+    "artifacts/reliability_model.joblib": "ba5a9b63a7d25866728509869abdd2ab3a98554631e4c5301d48f99bb51f5f4f",
+    "data/gold/gold_us_car_reliability.parquet": "71fb44e66d21b5ec6776aa65a67644d9df6d61cd7af71b478a57ad6411056590",
+    "data/gold/us_car_inference_catalog.parquet": "0c6b94536749a4578b49c896bb87ac859bf06260cab931f329190b3f21669db2"
+  }
+}

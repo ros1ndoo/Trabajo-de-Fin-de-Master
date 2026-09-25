@@ -531,6 +531,7 @@ def build_gold_dataset(
     train_end_year: int = 2018,
     observation_window_years: int = OBSERVATION_WINDOW_YEARS,
     return_normalizer: bool = False,
+    observation_index: pd.DataFrame | None = None,
 ) -> pd.DataFrame | tuple[pd.DataFrame, ReliabilityNormalizer]:
     """Build the completed-cohort Gold dataset ready for temporal modelling.
 
@@ -550,6 +551,19 @@ def build_gold_dataset(
     # Gold training layer.  The full technical catalogue remains available to
     # the inference layer, where it can receive an explicit baseline fallback.
     authorised_ids = set(accepted_matches(matches)["id_vehiculo_ano"].astype(str))
+    if observation_index is not None:
+        require_columns(observation_index, ("nhtsa_vehicle_id", "query_status"), context="Observation evidence")
+        if observation_index.nhtsa_vehicle_id.isna().any() or observation_index.nhtsa_vehicle_id.duplicated().any():
+            raise DataQualityError("Observation evidence requires unique official identities")
+        statuses = observation_index.set_index("nhtsa_vehicle_id").query_status
+        authorised = accepted_matches(matches)
+        states = authorised.nhtsa_vehicle_id.map(statuses)
+        if not states.isin(["valid_with_recalls", "valid_zero_recalls"]).all():
+            raise DataQualityError("Accepted identity lacks a valid observation; missing evidence is not zero")
+        observed_ids = set(recall_records.get("nhtsa_vehicle_id", pd.Series(dtype=str)))
+        has_events = authorised.nhtsa_vehicle_id.isin(observed_ids)
+        if (states.eq("valid_with_recalls") & ~has_events).any() or (states.eq("valid_zero_recalls") & has_events).any():
+            raise DataQualityError("Recorded query status contradicts recall events")
     matched_technical = technical.loc[
         technical["id_vehiculo_ano"].astype(str).isin(authorised_ids)
     ].copy()

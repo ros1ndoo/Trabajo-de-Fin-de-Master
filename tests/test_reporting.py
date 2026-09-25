@@ -36,3 +36,11 @@ def test_pdf_does_not_invent_missing_mae():
     assert "No disponible" in text
     assert "no es un intervalo" in text
     assert "+/- 0.0" not in text
+
+
+def test_pdf_preserves_model_version_and_official_provenance():
+    payload = build_prediction_report_pdf({"prediccion_indice_100": 50, "version_modelo": "model-test-abc",
+        "version_datos": "data-test-def", "version_escala": "scale-test-ghi",
+        "evidencia_oficial": {"status": "unavailable", "count": None}})
+    text = " ".join(page.extract_text() for page in PdfReader(BytesIO(payload)).pages)
+    assert all(value in text for value in ("model-test-abc", "data-test-def", "scale-test-ghi", "unavailable"))

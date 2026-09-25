@@ -67,6 +67,8 @@ def build_parser() -> argparse.ArgumentParser:
     eda.add_argument("--output-dir", help="Carpeta destino; por defecto reports/eda.")
 
     subcommands.add_parser("status", help="Mostrar el estado de artefactos sin crear ni entrenar datos.")
+    subcommands.add_parser("audit-science", help="Auditar sensibilidad del proxy y selección sin cambiar el predictor.")
+    subcommands.add_parser("publish-release", help="Validar y activar un paquete inmutable para nuevas sesiones web.")
     subcommands.add_parser("request-status", help="Mostrar fallos NHTSA pendientes; no ejecuta reintentos.")
     subcommands.add_parser("evaluate-temporal", help="Ejecutar ventanas retrospectivas aisladas; no publica modelos en la web.")
     audit = subcommands.add_parser("audit-model", help="Auditar errores por grupos sin reentrenar ni cambiar la web.")
@@ -78,6 +80,14 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     paths = ProjectPaths.discover()
+    if args.command == "audit-science":
+        from .scientific_audit import run_scientific_audit
+        print(run_scientific_audit(paths))
+        return 0
+    if args.command == "publish-release":
+        from .releases import publish_release
+        print(publish_release(paths))
+        return 0
     if args.command == "evaluate-temporal":
         from .temporal_experiments import run_temporal_experiments
         print(run_temporal_experiments(paths))

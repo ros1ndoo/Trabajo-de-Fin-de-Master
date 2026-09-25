@@ -26,9 +26,11 @@ from .data_sources import (
     NHTSARecallClient,
     ingest_cooperunion_csv,
 )
+from .evidence import observation_evidence
 from .matching import (
     MatchSummary,
     accepted_matches,
+    apply_documented_equivalences,
     apply_manual_match_decisions,
     match_technical_to_recalls,
     summarise_matches,
@@ -219,7 +221,10 @@ def run_pipeline(
         if not decisions_path.is_file():
             raise FileNotFoundError(f"Manual fuzzy-match decisions do not exist: {decisions_path}")
         decisions = pd.read_csv(decisions_path)
-        matches = apply_manual_match_decisions(matches, decisions)
+        if "evidence_sha256" in decisions.columns:
+            matches = apply_documented_equivalences(matches, decisions, catalog_batch.vehicles)
+        else:
+            matches = apply_manual_match_decisions(matches, decisions)
     batch: NHTSABatchResult = client.fetch_catalog_verified_recalls(accepted_matches(matches))
     query_status = batch.vehicle_index.set_index("nhtsa_vehicle_id")["query_status"].to_dict()
     for row_index, row in accepted_matches(matches).iterrows():
@@ -239,6 +244,7 @@ def run_pipeline(
         train_end_year=train_end_year,
         observation_window_years=OBSERVATION_WINDOW_YEARS,
         return_normalizer=True,
+        observation_index=batch.vehicle_index,
     )
     # This catalog intentionally includes historic and recent technical rows.
     # Only Gold contains the selected vehicle's recall-derived label.
@@ -254,6 +260,19 @@ def run_pipeline(
     inference_catalog = inference_catalog.merge(match_metadata, on="id_vehiculo_ano", how="left", validate="one_to_one")
     inference_catalog["match_status"] = inference_catalog["match_status"].fillna("not_queried")
     inference_catalog["coincidencia_recall_aceptada"] = inference_catalog["coincidencia_recall_aceptada"].fillna(False).astype(bool)
+    evidence_date = as_of_date or datetime.now(timezone.utc).date()
+    if isinstance(evidence_date, datetime):
+        evidence_date = evidence_date.date()
+    evidence = observation_evidence(
+        full_technical, matches, batch.vehicle_index, gold, as_of_date=evidence_date,
+    )
+    evidence["evidence_as_of"] = str(evidence_date)
+    evidence_columns = [column for column in evidence if column not in {
+        "ano_fabricacion", "match_status", "nhtsa_vehicle_id",
+    }]
+    inference_catalog = inference_catalog.merge(
+        evidence[evidence_columns], on="id_vehiculo_ano", how="left", validate="one_to_one",
+    )
     gold["fuente_demo"] = False
     inference_catalog["fuente_demo"] = False
     with atomic_destination(project_paths.gold_path) as temporary:
@@ -311,6 +330,8 @@ def run_pipeline(
         gold_rows=len(gold),
         inference_rows=len(inference_catalog),
         warnings=warnings,
+        observation_summary={column: {str(key): int(value) for key, value in evidence[column].value_counts().items()}
+                             for column in ("primary_reason", "query_status", "window_status", "window_outcome")},
     )
     return PipelineResult(
         technical=technical,
@@ -393,6 +414,7 @@ def _write_manifest(
     gold_rows: int,
     inference_rows: int,
     warnings: list[str],
+    observation_summary: dict[str, Any] | None = None,
 ) -> Path:
     manifest = {
         "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
@@ -431,6 +453,7 @@ def _write_manifest(
             "fuzzy_audit": str(paths.audit_path),
         },
         "warnings": warnings,
+        "observation_evidence": observation_summary,
     }
     destination = paths.processed_dir / "pipeline_manifest.json"
     atomic_json(destination, manifest)

@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from datetime import date, datetime, timezone
 from difflib import SequenceMatcher
 from pathlib import Path
 
@@ -307,10 +308,14 @@ def match_technical_to_recalls(
         nhtsa_root = model_root_name(best["modelo"])
         root_equal = bool(technical_root and technical_root == nhtsa_root)
         different_number = re.findall(r"\d+", technical_root) != re.findall(r"\d+", nhtsa_root)
-        ambiguous = not bool(best["_exact"]) and int(scored["_score"].eq(score).sum()) > 1
+        exact_count = int(scored["_exact"].sum())
+        unique_exact = bool(best["_exact"]) and exact_count == 1
+        ambiguous = exact_count > 1 or (
+            not bool(best["_exact"]) and int(scored["_score"].eq(score).sum()) > 1
+        )
         if different_number:
             status, audit = "rejected", True
-        elif score >= auto_accept_threshold and root_equal and not ambiguous:
+        elif score >= auto_accept_threshold and (root_equal or unique_exact) and not ambiguous:
             status, audit = "auto_accepted", False
         elif score >= manual_review_threshold:
             status, audit = "manual_review", True
@@ -404,6 +409,68 @@ def apply_manual_match_decisions(
         else:
             updated.at[index, "decision_manual"] = "rechazado"
             updated.at[index, "match_status"] = "manual_rejected"
+    return updated
+
+
+def apply_documented_equivalences(
+    matches: pd.DataFrame, decisions: pd.DataFrame, catalog: pd.DataFrame,
+) -> pd.DataFrame:
+    """Apply human-reviewed, single-model-year equivalences with provenance.
+
+    This validates the review record, not the truth of its documentary claim.
+    No equivalences are generated automatically. Cross-brand/year and numeric
+    root differences remain prohibited. The chosen official candidate must be
+    present in the verified catalog; free-text official names are not accepted.
+    """
+    fields = ("id_vehiculo_ano", "nhtsa_vehicle_id", "reviewer", "reviewed_at",
+              "evidence_url", "evidence_sha256", "justification")
+    require_columns(decisions, fields, context="Documented equivalences")
+    if decisions.empty:
+        return matches.copy()
+    if decisions[list(fields)].isna().any().any() or decisions[list(fields)].astype(str).apply(
+        lambda column: column.str.strip().eq("")
+    ).any().any():
+        raise ValueError("Equivalences require complete documentary evidence")
+    if decisions.id_vehiculo_ano.duplicated().any() or matches.id_vehiculo_ano.duplicated().any():
+        raise ValueError("Equivalences require unique technical identities")
+    if catalog.nhtsa_vehicle_id.duplicated().any():
+        raise ValueError("Official identities must be unique")
+    updated = matches.copy()
+    for decision in decisions.to_dict("records"):
+        if not re.fullmatch(r"[a-fA-F0-9]{64}", str(decision["evidence_sha256"])):
+            raise ValueError("Documentary evidence requires SHA-256")
+        if not str(decision["evidence_url"]).startswith("https://"):
+            raise ValueError("Documentary evidence requires an HTTPS source")
+        reviewed = date.fromisoformat(str(decision["reviewed_at"]))
+        if reviewed > datetime.now(timezone.utc).date():
+            raise ValueError("Review date cannot be in the future")
+        selected = updated.loc[updated.id_vehiculo_ano.eq(decision["id_vehiculo_ano"])]
+        official = catalog.loc[catalog.nhtsa_vehicle_id.eq(decision["nhtsa_vehicle_id"])]
+        if len(selected) != 1 or len(official) != 1:
+            raise ValueError("Equivalence references an unknown identity")
+        match, candidate = selected.iloc[0], official.iloc[0]
+        if match.match_status not in {"manual_review", "rejected", "no_candidate", "manual_rejected"}:
+            raise ValueError("Equivalence may only resolve an excluded identity")
+        if (comparison_make(match.marca_tecnica) != comparison_make(candidate.marca)
+                or int(match.ano_fabricacion) != int(candidate.ano_fabricacion)
+                or candidate.get("catalog_verified") not in (True, 1)):
+            raise ValueError("Equivalence crosses brand/year or lacks verified catalog identity")
+        root = model_root_name(candidate.modelo)
+        if re.findall(r"\d+", model_root_name(match.modelo_tecnico)) != re.findall(r"\d+", root):
+            raise ValueError("Numeric model identity protection cannot be overridden")
+        index = selected.index[0]
+        changes = {"nhtsa_vehicle_id": candidate.nhtsa_vehicle_id,
+                   "marca_nhtsa": candidate.marca, "modelo_nhtsa": candidate.modelo,
+                   "root_modelo_nhtsa": root,
+                   "root_name_matches": bool(root and root == model_root_name(match.modelo_tecnico)),
+                   "catalog_verified": True, "catalog_source": candidate.get("catalog_source", "unknown"),
+                   "match_score": token_set_ratio(match.modelo_tecnico, candidate.modelo),
+                   "match_status": "manual_accepted", "decision_manual": "equivalencia_documentada",
+                   "audit_required": True}
+        for key, value in changes.items():
+            updated.at[index, key] = value
+        for key in fields[2:]:
+            updated.at[index, "review_" + key] = str(decision[key])
     return updated
 
 

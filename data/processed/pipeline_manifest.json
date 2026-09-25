@@ -1,99 +1,119 @@
 {
   "fuzzy_matching": {
-    "accepted": 1361,
-    "auto_accepted": 1361,
+    "accepted": 1359,
+    "auto_accepted": 1359,
     "contingency_recommended": false,
-    "loss_rate": 0.38499774062358794,
-    "manual_review": 234,
+    "loss_rate": 0.385901491188432,
+    "manual_review": 236,
     "manually_accepted": 0,
     "no_candidate": 26,
     "rejected": 592,
     "technical_rows": 2213
   },
-  "generated_at": "2026-09-18T22:56:06+02:00",
-  "gold_rows": 1361,
+  "generated_at": "2026-09-25T15:35:45+02:00",
+  "gold_rows": 1359,
   "inference_catalog_rows": 2213,
   "nhtsa": {
     "catalog_failures": [],
     "catalog_rows": 56799,
     "failures": [],
-    "recall_records": 8085,
+    "recall_records": 8147,
     "retrieval_mode": "bulk",
-    "snapshot_directory": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\data\\raw\\nhtsa_bulk\\2026-09-18",
+    "snapshot_directory": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\output\\candidate-20260925\\data\\raw\\nhtsa_bulk\\2026-09-18",
     "unverified_zero_queries": 0,
     "vehicle_queries_failed": 0,
-    "vehicle_queries_succeeded": 1343
+    "vehicle_queries_succeeded": 1341
   },
   "normalizer": {
     "formula": "clip(50 - 10 * ((score_recalls_bruto - mean_train_segment) / std_train_segment), 0, 100)",
-    "global_mean": 2.0783132530120483,
-    "global_std": 2.611738170519867,
+    "global_mean": 2.2320441988950277,
+    "global_std": 2.7589674420175303,
     "segment_statistics": {
       "2dr hatchback": {
-        "mean": 1.0869565217391304,
-        "std": 1.2127239722592482
+        "mean": 0.8888888888888888,
+        "std": 1.048220125784067
       },
       "2dr suv": {
         "mean": 2.3125,
         "std": 1.9029171684547912
       },
       "4dr hatchback": {
-        "mean": 1.4761904761904763,
-        "std": 2.049832690479132
+        "mean": 1.4230769230769231,
+        "std": 1.7633682132842536
       },
       "4dr suv": {
-        "mean": 1.9870129870129871,
-        "std": 3.048284620848497
+        "mean": 2.138888888888889,
+        "std": 3.2849497807011288
       },
       "cargo van": {
-        "mean": 0.2,
-        "std": 0.4
+        "mean": 0.3333333333333333,
+        "std": 0.4714045207910317
       },
       "convertible": {
-        "mean": 1.6818181818181819,
-        "std": 2.0590457550738406
+        "mean": 2.289473684210526,
+        "std": 2.1232781846257165
       },
       "coupe": {
-        "mean": 1.34375,
-        "std": 1.60291482540402
+        "mean": 1.2745098039215685,
+        "std": 1.575902248542944
       },
       "crew cab pickup": {
-        "mean": 1.4375,
-        "std": 2.3377005261581303
+        "mean": 1.5,
+        "std": 2.1213203435596424
       },
       "extended cab pickup": {
-        "mean": 3.107142857142857,
-        "std": 4.496739181374224
+        "mean": 2.7,
+        "std": 4.848711168960263
       },
       "passenger minivan": {
-        "mean": 2.377551020408163,
-        "std": 2.0641018510428575
+        "mean": 2.4347826086956523,
+        "std": 2.094528834773478
       },
       "passenger van": {
-        "mean": 4.714285714285714,
-        "std": 5.041663152863227
+        "mean": 6.6,
+        "std": 4.810405388322278
       },
       "regular cab pickup": {
         "mean": 0.0,
-        "std": 2.611738170519867
+        "std": 2.7589674420175303
       },
       "sedan": {
-        "mean": 2.4642857142857144,
-        "std": 2.7220284303273186
+        "mean": 2.7869565217391306,
+        "std": 2.9569820613512556
       },
       "wagon": {
-        "mean": 2.673076923076923,
-        "std": 2.2142124302764024
+        "mean": 2.25,
+        "std": 1.7853571071357126
       }
     },
     "semantics": "100 means lower propensity to NHTSA safety recalls; this is not general mechanical reliability.",
-    "train_end_year": 2010
+    "train_end_year": 2007
+  },
+  "observation_evidence": {
+    "primary_reason": {
+      "included": 1359,
+      "manual_review": 236,
+      "no_candidate": 26,
+      "rejected": 592
+    },
+    "query_status": {
+      "not_linked_to_verified_identity": 854,
+      "valid_with_recalls": 1359
+    },
+    "window_outcome": {
+      "positive_in_window": 900,
+      "unknown": 854,
+      "zero_in_window": 459
+    },
+    "window_status": {
+      "complete": 2213
+    }
   },
   "outputs": {
-    "fuzzy_audit": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\data\\processed\\audit_fuzzy_matches.csv",
-    "gold": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\data\\gold\\gold_us_car_reliability.parquet",
-    "inference_catalog": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\data\\gold\\us_car_inference_catalog.parquet",
-    "sqlite": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\data\\processed\\auto_reliability.sqlite"
+    "fuzzy_audit": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\output\\candidate-20260925\\data\\processed\\audit_fuzzy_matches.csv",
+    "gold": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\output\\candidate-20260925\\data\\gold\\gold_us_car_reliability.parquet",
+    "inference_catalog": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\output\\candidate-20260925\\data\\gold\\us_car_inference_catalog.parquet",
+    "sqlite": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\output\\candidate-20260925\\data\\processed\\auto_reliability.sqlite"
   },
   "processed_quality": {
     "duplicate_keys": 0,
@@ -105,13 +125,15 @@
     "source_rows": 11090
   },
   "raw_quality": {
+    "dropped_before_min_year": 824,
     "dropped_invalid_key_or_year": 824,
+    "dropped_missing_identity_or_year": 0,
     "kept_rows": 11090,
     "min_year": 1995,
-    "source_path": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\data\\raw\\cooperunion_car_features.csv",
+    "source_path": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\output\\candidate-20260925\\data\\raw\\cooperunion_car_features.csv",
     "source_rows": 11914
   },
-  "raw_technical_csv": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\data\\raw\\cooperunion_car_features.csv",
+  "raw_technical_csv": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\output\\candidate-20260925\\data\\raw\\cooperunion_car_features.csv",
   "raw_technical_sha256": "26e39d3e902246d01a93ae390f51129a288079aefad2cb3292751a262ffd62d8",
   "technical_transform": {
     "aggregation": "median of observed valid trims within each make/model/year",

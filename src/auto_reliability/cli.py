@@ -68,6 +68,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     subcommands.add_parser("status", help="Mostrar el estado de artefactos sin crear ni entrenar datos.")
     subcommands.add_parser("audit-science", help="Auditar sensibilidad del proxy y selección sin cambiar el predictor.")
+    exclusions = subcommands.add_parser("review-exclusions", help="Contrastar excluidos con EPA y consultar casos sin crear etiquetas.")
+    exclusions.add_argument("--snapshot-date", required=True)
+    exclusions.add_argument("--query-limit", type=int, default=0, help="Consultas pendientes por ejecución; 0 solo audita identidades.")
     subcommands.add_parser("publish-release", help="Validar y activar un paquete inmutable para nuevas sesiones web.")
     subcommands.add_parser("request-status", help="Mostrar fallos NHTSA pendientes; no ejecuta reintentos.")
     subcommands.add_parser("evaluate-temporal", help="Ejecutar ventanas retrospectivas aisladas; no publica modelos en la web.")
@@ -80,6 +83,10 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     paths = ProjectPaths.discover()
+    if args.command == "review-exclusions":
+        from .exclusion_review import review_exclusions
+        print(review_exclusions(paths, snapshot_date=args.snapshot_date, query_limit=args.query_limit))
+        return 0
     if args.command == "audit-science":
         from .scientific_audit import run_scientific_audit
         print(run_scientific_audit(paths))

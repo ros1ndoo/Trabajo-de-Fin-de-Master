@@ -56,6 +56,7 @@ class ServiceStatus:
     technical_year_max: int | None = None
     ingestion_warnings: tuple[str, ...] = ()
     inventory_alignment: dict[str, Any] | None = None
+    exclusion_review: dict[str, Any] | None = None
 
 
 class ReliabilityService:
@@ -136,7 +137,31 @@ class ReliabilityService:
             technical_year_max=int(catalog.ano_fabricacion.max()) if not catalog.empty else None,
             ingestion_warnings=warnings,
             inventory_alignment=self.inventory_alignment_status() if not self._demo_mode else None,
+            exclusion_review=self.exclusion_review_status() if not self._demo_mode else None,
         )
+
+    def exclusion_review_status(self) -> dict[str, Any] | None:
+        """Expose separate research progress only when it matches the pinned data."""
+        from .fuel_economy import digest
+        path = self.project_paths.processed_dir / "exclusion_review/latest.json"
+        if not path.exists():
+            return None
+        try:
+            summary = json.loads(path.read_text(encoding="utf-8"))
+            protocol = summary["protocol"]
+            if (protocol["catalog_sha256"] != digest(self.paths.inference_catalog_path)
+                    or protocol["gold_sha256"] != digest(self.paths.gold_path)):
+                return None
+            total = summary["excluded_rows"]
+            if type(total) is not int or total < 0 or summary["labels_added_to_gold"] != 0:
+                raise ValueError("Invalid review summary")
+            for key in ("independent_identity_counts", "query_counts"):
+                counts = summary[key]
+                if not isinstance(counts, dict) or any(type(v) is not int or v < 0 for v in counts.values()) or sum(counts.values()) != total:
+                    raise ValueError("Invalid review denominators")
+            return summary
+        except (OSError, ValueError, KeyError, TypeError):
+            return {"error": "La revisión independiente no supera los controles de integridad."}
 
     def inventory_alignment_status(self) -> dict[str, Any] | None:
         """Read optional independent-inventory progress, never prediction inputs."""

@@ -24,6 +24,8 @@ data/processed/**
 !data/processed/Placeholder.txt
 !data/processed/pipeline_manifest.json
 !data/processed/target_normalizer.json
+!data/processed/exclusion_review/
+!data/processed/exclusion_review/latest.json
 !data/processed/inventory_resolution/
 !data/processed/inventory_resolution/latest.json
 !data/processed/inventory_resolution/*/

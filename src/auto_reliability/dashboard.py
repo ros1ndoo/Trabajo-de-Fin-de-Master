@@ -1260,6 +1260,23 @@ def _coverage_notice(st: Any, status: Mapping[str, Any], catalog: Any = None) ->
                 st.info("Este inventario no amplía todavía el predictor: falta potencia y validar "
                         "las categorías. Coincidir en nombre no acredita aplicabilidad a cada "
                         "versión o VIN; no encontrar una coincidencia no significa cero recalls.")
+    review = status.get("exclusion_review")
+    if isinstance(review, Mapping):
+        with st.expander("Revisión de exclusiones · evidencia independiente"):
+            if review.get("error"):
+                st.warning(_text(review["error"]))
+            else:
+                identities = review.get("independent_identity_counts", {})
+                queries = review.get("query_counts", {})
+                st.write(f"{review.get('excluded_rows')} excluidos; "
+                         f"{identities.get('exact_independent_identity', 0)} con identidad exacta en EPA.")
+                st.write(f"Consultas con campañas: {queries.get('campaigns_returned_review_required', 0)} · "
+                         f"Respuestas vacías sin cobertura acreditada: {queries.get('empty_response_identity_only', 0)} · "
+                         f"Fallidas: {queries.get('query_failed', 0)} · "
+                         f"Sin consultar: {queries.get('not_queried', 0)}.")
+                st.info("Investigación separada del predictor: estas consultas no han añadido etiquetas a Gold. "
+                        "La identidad EPA no acredita equivalencia de nombres con NHTSA; un error o una respuesta "
+                        "vacía no demuestran ausencia de recalls ni fiabilidad.")
     warnings = status.get("ingestion_warnings", ())
     if isinstance(warnings, Sequence) and not isinstance(warnings, (str, bytes)):
         messages = [item for item in dict.fromkeys(_text(item, "") for item in warnings) if item]

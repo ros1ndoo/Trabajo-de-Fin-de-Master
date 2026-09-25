@@ -1,4 +1,4 @@
-"""Serving releases remain coherent when later publication fails."""
+"""Las publicaciones conservan coherencia cuando falla una activación posterior."""
 
 import json
 
@@ -27,7 +27,7 @@ def test_publication_failure_preserves_previous_release(tmp_path):
         publish_release(paths)
     assert serving_paths(paths).root == active.root
     assert serving_paths(paths).gold_path.read_bytes() == original
-    # Tampering with a pinned bundle is an error, never fallback to loose files.
+    # Alterar un paquete fijado es un error; nunca recurrir silenciosamente a archivos sueltos.
     with active.model_path.open("ab") as stream:
         stream.write(b"corrupt")
     with pytest.raises(ValueError, match="integrity"):

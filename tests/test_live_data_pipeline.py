@@ -1,4 +1,4 @@
-"""Deterministic regressions for the real API integration; no network needed."""
+"""Regresiones deterministas de integración API, sin necesidad de red."""
 
 from __future__ import annotations
 

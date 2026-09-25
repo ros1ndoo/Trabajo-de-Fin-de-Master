@@ -1,7 +1,6 @@
-"""Rebuild and evaluate a local candidate without touching the serving release.
-
-Run from the repository root: python scripts/build_candidate.py --destination output/candidate-20260925
-Only existing official snapshot data are used; no aliases or zero labels invented.
+"""Reconstruye y evalúa una candidata local sin modificar la publicación activa. Ejecutar desde
+la raíz: python scripts/build_candidate.py --destination output/candidate-20260925. Solo
+utiliza instantáneas oficiales existentes; no inventa alias ni ceros.
 """
 
 from __future__ import annotations
@@ -23,7 +22,7 @@ from auto_reliability.temporal_experiments import run_temporal_experiments
 
 
 def build(destination: Path) -> Path:
-    """Create a fresh isolated workspace and record before/after coverage."""
+    """Crea un espacio aislado nuevo y registra cobertura anterior y posterior."""
     source = ProjectPaths.discover()
     active = serving_paths(source)
     destination = destination.resolve()

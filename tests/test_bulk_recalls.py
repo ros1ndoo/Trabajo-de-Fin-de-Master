@@ -1,4 +1,4 @@
-"""Offline contracts for the official bulk source; never invent absent zeros."""
+"""Contratos locales de la fuente masiva oficial; no inventar ceros ante ausencias."""
 from __future__ import annotations
 
 import hashlib
@@ -46,7 +46,7 @@ def test_complete_snapshot_catalog_and_exact_evidence(tmp_path):
     assert payload["Count"] == 2
     assert payload["results"][0]["ReportReceivedDate"] == "2018-01-31"
     assert store.payload("Audi", "Nonexistent", 2017) is None
-    # A new publication must also work on Windows (all readers must close).
+    # La publicación también debe funcionar en Windows; todos los lectores deben cerrarse.
     build_bulk_index(paths, tmp_path / "raw")
     assert store.metadata()["vehicles"] == 1
 

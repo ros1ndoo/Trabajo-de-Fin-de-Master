@@ -1,4 +1,4 @@
-"""Command-line entry points for reproducible pipeline operations."""
+"""Puntos de entrada de línea de comandos para operaciones reproducibles."""
 
 from __future__ import annotations
 

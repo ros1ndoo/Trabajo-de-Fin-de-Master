@@ -1,4 +1,4 @@
-"""Descriptive sensitivity of the constructed target, not new model accuracy."""
+"""Sensibilidad descriptiva del objetivo construido, no nueva precisión predictiva."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ SCENARIOS = {
 
 
 def severity_counts(gold: pd.DataFrame, matches: pd.DataFrame, records: pd.DataFrame) -> pd.DataFrame:
-    """Count deduplicated campaigns inside each model's three calendar years."""
+    """Cuenta campañas deduplicadas en los tres años naturales de cada modelo."""
     if gold.id_vehiculo_ano.duplicated().any():
         raise ValueError("Duplicate Gold identity")
     mapping = accepted_matches(matches)[["id_vehiculo_ano", "nhtsa_vehicle_id"]]
@@ -45,7 +45,7 @@ def severity_counts(gold: pd.DataFrame, matches: pd.DataFrame, records: pd.DataF
 
 
 def selection_coverage(technical: pd.DataFrame, gold: pd.DataFrame) -> dict[str, Any]:
-    """Publish inclusion denominators, never label excluded vehicles as zero."""
+    """Publica denominadores de inclusión sin etiquetar excluidos como ceros."""
     if technical.id_vehiculo_ano.duplicated().any() or gold.id_vehiculo_ano.duplicated().any():
         raise ValueError("Coverage requires unique identities")
     if not gold.id_vehiculo_ano.isin(technical.id_vehiculo_ano).all():
@@ -62,10 +62,10 @@ def selection_coverage(technical: pd.DataFrame, gold: pd.DataFrame) -> dict[str,
 
 
 def sensitivity(gold: pd.DataFrame, counts: pd.DataFrame, *, train_max: int) -> dict[str, Any]:
-    """Refit only target-scale statistics on the same historical train rows.
-
-    Alternative scales define different targets: their shifts are NOT changes
-    in predictive MAE. No estimator, hyperparameter or serving score is changed.
+    """Reajusta solo estadísticas de escala con las mismas filas históricas de entrenamiento.
+    Las escalas alternativas definen objetivos diferentes: sus desplazamientos NO son
+    cambios de MAE predictivo. No modifica estimadores, hiperparámetros ni puntuaciones
+    servidas.
     """
     aligned = counts.reindex(gold.id_vehiculo_ano)
     if (aligned.isna().any().any() or not np.isfinite(aligned.to_numpy()).all()
@@ -84,7 +84,7 @@ def sensitivity(gold: pd.DataFrame, counts: pd.DataFrame, *, train_max: int) -> 
         targets[name] = normalizer.transform(frame)
     baseline = targets["documented"]
     result = {}
-    # Report later cohorts separately; no target-scale fitting on these rows.
+    # Informar cohortes posteriores por separado; no ajustar la escala con estas filas.
     for partition, mask in {"all_gold": gold.ano_fabricacion.notna(), "after_train": gold.ano_fabricacion > train_max}.items():
         reference = baseline.loc[mask]
         rows = []
@@ -102,7 +102,7 @@ def sensitivity(gold: pd.DataFrame, counts: pd.DataFrame, *, train_max: int) -> 
 
 
 def run_scientific_audit(paths: ProjectPaths) -> Path:
-    """Freeze a protocol and audit local snapshots without API calls or fitting ML."""
+    """Congela un protocolo y audita instantáneas locales sin API ni entrenamiento de modelos."""
     active = serving_paths(paths)
     gold = pd.read_parquet(active.gold_path)
     artifact = load_model_artifact(active.model_path)

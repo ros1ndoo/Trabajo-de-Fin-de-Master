@@ -1,4 +1,4 @@
-"""Synthetic fixtures test contracts; they are not real no-recall evidence."""
+"""Los datos sintéticos prueban contratos, no ausencia real de recalls."""
 
 import pandas as pd
 import pytest

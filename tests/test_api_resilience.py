@@ -1,4 +1,4 @@
-"""HTTP errors, Retry-After and cache concurrency use deterministic fixtures."""
+"""Prueba errores HTTP, Retry-After y concurrencia de caché con datos deterministas."""
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest

@@ -1,4 +1,4 @@
-"""Small, self-contained PDF export for a dashboard prediction summary."""
+"""Exportación PDF autónoma del resumen de una predicción."""
 
 from __future__ import annotations
 
@@ -32,11 +32,10 @@ def _value(prediction: Mapping[str, Any], key: str, default: Any = "-") -> Any:
 def build_prediction_report_pdf(
     prediction: Mapping[str, Any], output_path: str | Path | None = None
 ) -> bytes:
-    """Build a one-page Spanish PDF; optionally save it and always return bytes.
-
-    The report is deliberately grounded in the supplied prediction mapping. It
-    never invents vehicle causes or represents the score as mechanical
-    reliability.
+    """Construye un PDF en castellano, lo guarda opcionalmente y devuelve sus bytes. Se basa
+    exclusivamente en el resultado recibido: no inventa causas de fallos ni presenta el
+    índice como fiabilidad mecánica. El contenido puede ocupar varias páginas si la
+    explicación es extensa.
     """
 
     buffer = BytesIO()

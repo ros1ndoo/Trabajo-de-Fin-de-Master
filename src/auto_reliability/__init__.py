@@ -1,8 +1,6 @@
-"""Auto Reliability: a transparent, recall-based safety proxy for US vehicles.
-
-The project deliberately distinguishes a NHTSA recall proxy from general
-mechanical reliability.  Public modules are designed to be usable both from
-the command line and from the Streamlit dashboard.
+"""AutoReliability: proxy transparente de recalls de seguridad en vehículos estadounidenses.
+Distingue explícitamente el indicador NHTSA de la fiabilidad mecánica general. Sus módulos
+se utilizan desde consola y Streamlit.
 """
 
 from .config import ProjectPaths

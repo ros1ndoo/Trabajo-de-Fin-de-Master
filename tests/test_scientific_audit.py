@@ -1,4 +1,4 @@
-"""Sensitivity must not fit on future outcomes or hide exclusions."""
+"""La sensibilidad no debe ajustarse con resultados futuros ni ocultar exclusiones."""
 
 import numpy as np
 import pandas as pd

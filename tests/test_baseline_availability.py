@@ -1,4 +1,4 @@
-"""Missing own labels and unused features must not block a fitted group baseline."""
+"""La falta de etiquetas propias o atributos no utilizados no debe bloquear el baseline ajustado."""
 
 from types import SimpleNamespace
 

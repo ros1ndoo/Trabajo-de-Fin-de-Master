@@ -1,7 +1,6 @@
-"""Auditable EPA/NHTSA name alignment, separate from labels and prediction.
-
-Only unique full-name equivalences are linked automatically. Fuzzy and trim
-similarities are review suggestions, never authority to transfer campaigns.
+"""Alineación auditable de nombres EPA/NHTSA, separada de etiquetas y predicción. Solo vincula
+automáticamente equivalencias únicas de nombre completo. Semejanzas difusas o de acabado son
+sugerencias para revisión, no permiso para transferir campañas.
 """
 
 from __future__ import annotations
@@ -30,12 +29,12 @@ LINKED = {"exact_name", "normalized_name"}
 
 
 def _literal(value: object) -> str:
-    """Compare case/spacing only; preserve model numbers and suffixes."""
+    """Compara solo mayúsculas y espacios; conserva números y sufijos de modelo."""
     return " ".join(str(value).casefold().split())
 
 
 def _validate_keys(frame: pd.DataFrame, columns: list[str], year: str) -> None:
-    """Reject invalid identities rather than silently truncating model years."""
+    """Rechaza identidades inválidas en lugar de truncar años silenciosamente."""
     require_columns(frame, columns, context="Inventory resolution")
     if frame[columns].isna().any().any() or frame[columns].astype(str).apply(
         lambda col: col.str.strip().eq("")
@@ -47,11 +46,10 @@ def _validate_keys(frame: pd.DataFrame, columns: list[str], year: str) -> None:
 
 
 def resolve_inventory(inventory: pd.DataFrame, catalog: pd.DataFrame) -> pd.DataFrame:
-    """Return one audit row per EPA variant, retaining unresolved candidates.
-
-    A linked name means only family/year alignment. It does not assert that a
-    recall applies to every trim/VIN, that a three-year label is mature, or that
-    the technical inputs suffice for inference. Unmatched means unknown.
+    """Devuelve una fila de auditoría por variante EPA, conservando candidatos sin resolver.
+    Vincular nombres solo alinea familia/año: no acredita aplicabilidad a todo acabado/VIN,
+    madurez de ventana ni suficiencia técnica para inferencia. Sin cruce significa
+    desconocido.
     """
     _validate_keys(inventory, ["id", *KEYS], "year")
     _validate_keys(catalog, NHTSA_KEYS, "ano_fabricacion")
@@ -101,7 +99,7 @@ def resolve_inventory(inventory: pd.DataFrame, catalog: pd.DataFrame) -> pd.Data
 
 
 def resolution_summary(audit: pd.DataFrame) -> dict[str, Any]:
-    """Count variants and distinct source names separately, without label claims."""
+    """Cuenta variantes y nombres de fuente distintos por separado, sin afirmar etiquetas."""
     names = audit.drop_duplicates(KEYS)
 
     def counts(frame: pd.DataFrame) -> dict[str, int]:
@@ -120,10 +118,9 @@ def resolution_summary(audit: pd.DataFrame) -> dict[str, Any]:
 
 
 def publish_resolution(paths: ProjectPaths, snapshot_date: str) -> dict[str, Any]:
-    """Rebuild from verified raw EPA and publish a content-addressed audit bundle.
-
-    A completion pointer is written last. Interrupted runs never replace the
-    active predictor or expose an incomplete bundle as completed.
+    """Reconstruye desde EPA verificado y publica auditoría identificada por contenido. Escribe
+    el puntero de finalización al final; una interrupción no sustituye el predictor ni
+    presenta un paquete incompleto como terminado.
     """
     if date.fromisoformat(snapshot_date).isoformat() != snapshot_date:
         raise ValueError("Snapshot date must be YYYY-MM-DD.")
@@ -148,7 +145,7 @@ def publish_resolution(paths: ProjectPaths, snapshot_date: str) -> dict[str, Any
         audit["epa_retrieved_at"] = manifest["retrieved_at_utc"]
         with atomic_destination(output / "audit.parquet", immutable=True) as temporary:
             audit.to_parquet(temporary, index=False)
-        # Save the exact name catalog used, independent of later index refreshes.
+        # Guardar el catálogo exacto utilizado, independientemente de actualizaciones posteriores.
         with atomic_destination(output / "nhtsa_catalog.parquet", immutable=True) as temporary:
             catalog[NHTSA_KEYS].to_parquet(temporary, index=False)
         summary = resolution_summary(audit)
@@ -159,7 +156,7 @@ def publish_resolution(paths: ProjectPaths, snapshot_date: str) -> dict[str, Any
                         "catalog_file_sha256": digest(output / "nhtsa_catalog.parquet")})
         summary_path = output / "summary.json"
         atomic_json(summary_path, summary, immutable=True)
-        # On reruns, retain the original completion time and verify stored files.
+        # En repeticiones, conservar la fecha original y verificar los archivos guardados.
         saved = json.loads(summary_path.read_text(encoding="utf-8"))
         if saved["audit_sha256"] != summary["audit_sha256"] or saved["catalog_file_sha256"] != summary["catalog_file_sha256"]:
             raise DataSourceError("Existing resolution bundle failed integrity verification.")

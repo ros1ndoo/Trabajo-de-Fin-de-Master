@@ -1,0 +1,22 @@
+{
+  "excluded_rows": 854,
+  "independent_identity_counts": {
+    "absent_from_independent_inventory": 474,
+    "exact_independent_identity": 380
+  },
+  "labels_added_to_gold": 0,
+  "protocol": {
+    "catalog_sha256": "a90cb388e9f29cd19df346879e1447ac81b914bf5806233492e301b7437af24d",
+    "epa_sha256": "1801f1889096b89812380efad61dc94bf642e062d1685e42953942c5b21ea712",
+    "gold_sha256": "2c57d8f28617e324d7f41d21d4ab3fdced260f2125c03be988d075a16b7e01ef",
+    "source_retrieved_at": "2026-09-18T21:11:07.958057+00:00",
+    "source_url": "https://www.fueleconomy.gov/feg/epadata/vehicles.xml.zip",
+    "version": "independent-exclusions-v1",
+    "zero_policy": "Independent identity plus empty response does not establish recall-namespace coverage; not Gold eligible."
+  },
+  "query_counts": {
+    "campaigns_returned_review_required": 40,
+    "not_queried": 474,
+    "query_failed": 340
+  }
+}

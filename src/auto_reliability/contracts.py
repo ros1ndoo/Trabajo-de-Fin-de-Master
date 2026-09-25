@@ -1,4 +1,4 @@
-"""Data contracts and validation helpers shared across project layers."""
+"""Contratos de datos y validadores compartidos entre capas."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ PREDICTION_FEATURES: tuple[str, ...] = (
 
 
 def canonical_text(value: object) -> str:
-    """Produce a stable lowercase comparison key without losing source labels."""
+    """Produce una clave estable en minúsculas sin perder las etiquetas de la fuente."""
 
     if value is None or pd.isna(value):
         return ""
@@ -45,7 +45,7 @@ def canonical_text(value: object) -> str:
 
 
 def vehicle_id(make: object, model: object, year: object) -> str:
-    """Build the canonical traceability key used across all project layers."""
+    """Construye la clave canónica de trazabilidad de todas las capas."""
 
     make_key = canonical_text(make).replace(" ", "_").upper()
     model_key = canonical_text(model).replace(" ", "_").upper()
@@ -53,7 +53,7 @@ def vehicle_id(make: object, model: object, year: object) -> str:
 
 
 def require_columns(frame: pd.DataFrame, columns: Iterable[str], *, context: str) -> None:
-    """Raise a concise diagnostic if a dataframe violates its schema contract."""
+    """Emite un diagnóstico breve cuando el dataframe incumple su esquema."""
 
     missing = sorted(set(columns).difference(frame.columns))
     if missing:
@@ -61,7 +61,7 @@ def require_columns(frame: pd.DataFrame, columns: Iterable[str], *, context: str
 
 
 def validate_gold_dataset(frame: pd.DataFrame) -> pd.DataFrame:
-    """Validate fundamental gold-layer invariants without mutating caller data."""
+    """Valida invariantes fundamentales de Gold sin modificar los datos recibidos."""
 
     require_columns(frame, GOLD_REQUIRED_COLUMNS, context="Gold dataset")
     if frame.empty:
@@ -74,10 +74,9 @@ def validate_gold_dataset(frame: pd.DataFrame) -> pd.DataFrame:
 
 
 def dataset_fingerprint(frame: pd.DataFrame) -> str:
-    """Bind a model to its actual source rows, independent of storage dtypes.
-
-    Derived target scales are deliberately omitted: training fits its own
-    scale. Raw labels, feature values and provenance must still agree.
+    """Vincula un modelo a sus filas reales, independientemente de tipos de almacenamiento.
+    Omite escalas derivadas porque el entrenamiento ajusta su propia escala; exige
+    coincidencia de etiquetas brutas, características y procedencia.
     """
     columns = sorted(set(GOLD_REQUIRED_COLUMNS + ("fuente_demo",)).intersection(frame.columns)
                      - {"indice_fiabilidad_100"})

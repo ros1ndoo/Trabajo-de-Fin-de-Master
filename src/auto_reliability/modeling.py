@@ -1,15 +1,9 @@
-"""Leakage-safe temporal modelling for the AutoReliability index.
-
-The gold layer is intentionally the only training input for this module.  In
-particular, ``score_recalls_bruto`` is *not* a feature: it helped construct the
-label and would leak the outcome of the vehicle being predicted.  The derived
-``hist_fiabilidad_marca`` feature is assumed to have been calculated upstream
-with data available strictly before the vehicle launch.
-
-The public entry point is :func:`train_and_select_model`.  It uses a temporal
-train/validation/test split, compares a transparent brand/segment baseline,
-Ridge, and a Random Forest candidate, and only selects the latter when it
-beats Ridge by more than ten percent on the validation MAE.
+"""Modelado temporal del índice con prevención de fuga. Gold es la única entrada de
+entrenamiento. score_recalls_bruto no es una característica porque construye la etiqueta;
+hist_fiabilidad_marca debe haberse calculado antes del lanzamiento. train_and_select_model
+separa entrenamiento, validación y test, compara baseline, Ridge y Random Forest y exige a
+este último una reducción de MAE de validación superior al 10% frente a Ridge para ser
+elegible.
 """
 
 from __future__ import annotations
@@ -61,7 +55,7 @@ ATTRIBUTIONS_FILENAME = "feature_attributions.json"
 
 @dataclass
 class TemporalSplit:
-    """A chronological split with no row or year overlap between partitions."""
+    """Partición cronológica sin solapamiento de filas ni años."""
 
     train: pd.DataFrame
     validation: pd.DataFrame
@@ -74,7 +68,7 @@ class TemporalSplit:
     label_maturity_years: int = OBSERVATION_WINDOW_YEARS
 
     def metadata(self, *, year_column: str = YEAR_COLUMN) -> dict[str, Any]:
-        """Return JSON-friendly partition facts for an experiment report."""
+        """Devuelve datos de partición serializables a JSON para el informe."""
 
         def partition_summary(frame: pd.DataFrame) -> dict[str, Any]:
             if frame.empty:
@@ -101,13 +95,10 @@ class TemporalSplit:
 
 @dataclass(frozen=True)
 class TemporalTargetNormalizer:
-    """Target-scale statistics fitted on the *effective* training partition.
-
-    Gold can contain a display target normalised at a different historical
-    cutoff.  That value must not be reused when an adaptive temporal split
-    moves the training boundary.  This normalizer reconstructs the 0--100
-    target from the unnormalised recall burden using only the train partition
-    that was actually available at the validation launch.
+    """Estadísticas del objetivo ajustadas en entrenamiento efectivo. Gold puede incluir un
+    índice visual calculado con otro corte, que no debe reutilizarse si cambia la partición.
+    Reconstruye el objetivo 0–100 desde la carga bruta usando únicamente entrenamiento
+    disponible antes del lanzamiento de validación.
     """
 
     raw_score_column: str
@@ -118,7 +109,7 @@ class TemporalTargetNormalizer:
     observation_window_years: int = OBSERVATION_WINDOW_YEARS
 
     def transform(self, frame: pd.DataFrame) -> pd.Series:
-        """Return the documented score using train-only segment statistics."""
+        """Devuelve el índice documentado con estadísticas de segmento de entrenamiento."""
 
         require_columns(
             frame,
@@ -142,7 +133,7 @@ class TemporalTargetNormalizer:
         return pd.Series(score, index=frame.index, name=TARGET_COLUMN, dtype=float)
 
     def to_dict(self) -> dict[str, Any]:
-        """Return only JSON-safe values for the persisted model metadata."""
+        """Devuelve metadatos del modelo compatibles con JSON."""
 
         return {
             "raw_score_column": self.raw_score_column,
@@ -157,7 +148,7 @@ class TemporalTargetNormalizer:
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> TemporalTargetNormalizer:
-        """Rehydrate persisted metadata for a service-side historical chart."""
+        """Reconstruye metadatos persistidos para el gráfico histórico del servicio."""
 
         return cls(
             raw_score_column=str(payload["raw_score_column"]),
@@ -174,12 +165,9 @@ class TemporalTargetNormalizer:
 
 @dataclass
 class ReliabilityModelArtifact:
-    """A serialisable model plus the train-only target transformation.
-
-    Estimators are trained on a z-scored target for numerical stability.  The
-    mean and standard deviation below are fitted only on the rows supplied to
-    the estimator, then predictions are transformed back to the documented
-    0--100 scale.
+    """Modelo serializable y transformación del objetivo ajustada solo en entrenamiento. Los
+    estimadores usan un objetivo estandarizado para estabilidad numérica; media y desviación
+    proceden de sus filas de ajuste y la salida vuelve a la escala 0–100.
     """
 
     estimator: Any
@@ -196,7 +184,7 @@ class ReliabilityModelArtifact:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def predict(self, frame: pd.DataFrame | Mapping[str, Any] | Sequence[Mapping[str, Any]]) -> np.ndarray:
-        """Predict the reliability proxy, safely returning values in 0--100."""
+        """Estima el proxy con salida acotada entre 0 y 100."""
 
         features = prepare_feature_frame(frame, feature_columns=self.feature_columns)
         if features.empty:
@@ -210,7 +198,7 @@ class ReliabilityModelArtifact:
 
 @dataclass
 class TrainingResult:
-    """In-memory result of a temporal training experiment."""
+    """Resultado en memoria de un experimento de entrenamiento temporal."""
 
     artifact: ReliabilityModelArtifact
     metrics: dict[str, Any]
@@ -220,12 +208,10 @@ class TrainingResult:
 
 
 class BrandSegmentMeanBaseline(BaseEstimator, RegressorMixin):
-    """Stationary training-only mean baseline with sensible sparse fallbacks.
-
-    For a vehicle in the validation or test period it first uses the mean for
-    the observed ``marca`` and ``categoria_vehiculo`` pair in *training* data.
-    If that combination is unseen, it backs off to the make mean, the segment
-    mean, then the global training mean.  It never reads a later partition.
+    """Baseline estacionario de medias de entrenamiento con respaldos para grupos escasos. En
+    validación/test utiliza marca/categoria_vehiculo de entrenamiento; si falta el grupo,
+    recurre a media de marca, segmento y global, en ese orden. Nunca lee particiones
+    posteriores.
     """
 
     def fit(self, X: pd.DataFrame, y: Sequence[float]) -> BrandSegmentMeanBaseline:
@@ -260,7 +246,7 @@ class BrandSegmentMeanBaseline(BaseEstimator, RegressorMixin):
         return values
 
     def predict_with_sources(self, X: pd.DataFrame) -> tuple[np.ndarray, list[str]]:
-        """Return estimates and the fallback level used for each row."""
+        """Devuelve estimaciones y nivel de respaldo utilizado por fila."""
 
         if not hasattr(self, "global_mean_"):
             raise ValueError("Baseline has not been fitted yet.")
@@ -293,14 +279,11 @@ def temporal_train_validation_test_split(
     adaptive_fallback: bool = True,
     observation_window_years: int = OBSERVATION_WINDOW_YEARS,
 ) -> TemporalSplit:
-    """Split data chronologically, falling back to distinct-year partitions.
-
-    The documented 1995--2018 / 2019--2021 / 2022+ split is used whenever all
-    three partitions are represented.  Smaller or newer data extracts are not
-    shuffled: an adaptive split assigns the earliest distinct years to train,
-    followed by validation and then test.  Before fitting, a three-year label
-    maturity embargo removes train labels not known at the first validation
-    launch and validation labels not known at the first test launch.
+    """Divide cronológicamente, con respaldo por años distintos. Utiliza los cortes
+    documentados 1995–2018 / 2019–2021 / 2022+ cuando hay tres particiones. En extractos
+    menores no mezcla filas: asigna años tempranos a entrenamiento, después validación y
+    test. Antes del ajuste, el embargo de madurez de tres años elimina etiquetas no
+    disponibles en el siguiente lanzamiento.
     """
 
     if not isinstance(frame, pd.DataFrame):
@@ -409,14 +392,11 @@ def _apply_label_maturity_embargo(
     *,
     year_column: str,
 ) -> TemporalSplit:
-    """Purge labels that would not yet exist at the next launch boundary.
-
-    A label for model year ``y`` represents recalls in ``y`` through
-    ``y + observation_window_years - 1``.  At the launch of the first
-    validation vehicle, only labels ending before that launch are available to
-    train; the same rule applies when validation is promoted before test.  The
-    held-out test set is never filtered by a later date because it is only
-    evaluated, never reused for fitting or model selection.
+    """Elimina etiquetas aún desconocidas en el siguiente límite temporal. La etiqueta de y
+    cubre y hasta y + observation_window_years - 1. Solo ventanas terminadas antes del
+    primer lanzamiento de validación son entrenables; la misma regla se aplica al incorporar
+    validación antes del test. El test no se filtra por una fecha posterior porque solo se
+    evalúa, no ajusta ni selecciona.
     """
 
     train = split.train.copy()
@@ -458,7 +438,7 @@ def fit_temporal_target_normalizer(
     raw_score_column: str,
     observation_window_years: int = OBSERVATION_WINDOW_YEARS,
 ) -> TemporalTargetNormalizer:
-    """Fit the target scale using only labels eligible for the train partition."""
+    """Ajusta la escala del objetivo con etiquetas elegibles para entrenamiento."""
 
     require_columns(
         training,
@@ -495,7 +475,7 @@ def fit_temporal_target_normalizer(
 
 
 def _normalized_categories(values: pd.Series) -> pd.Series:
-    """Create stable, non-null segment keys without learning from later rows."""
+    """Crea claves de segmento estables y no nulas sin aprender de filas posteriores."""
 
     series = values.astype("object")
     output = series.where(series.notna(), "sin_categoria").astype(str).str.strip().str.lower()
@@ -514,13 +494,11 @@ def train_and_select_model(
     advanced_min_rows: int = 8,
     observation_window_years: int = OBSERVATION_WINDOW_YEARS,
 ) -> TrainingResult:
-    """Train and select a model using a strict chronological experiment.
-
-    Selection is based solely on validation rows.  After the decision, the
-    selected estimator is refit on train+validation and evaluated once on the
-    untouched test rows.  The Random Forest is selected only when its
-    validation MAE reduction versus Ridge is *strictly greater* than the
-    requested threshold (10% by default).
+    """Entrena y selecciona en un experimento cronológico estricto. Decide solo con validación;
+    después reajusta el estimador seleccionado con entrenamiento y validación y evalúa el
+    test separado. Random Forest exige reducción de MAE frente a Ridge estrictamente mayor
+    al umbral (10% por defecto). Una ejecución no convierte datos ya examinados en un test
+    nuevo intacto.
     """
 
     if not 0 <= advanced_improvement_threshold < 1:
@@ -530,9 +508,9 @@ def train_and_select_model(
     if observation_window_years < 1:
         raise ValueError("observation_window_years must be at least one.")
 
-    # Fingerprint the unmodified input.  The target below is deliberately
-    # reconstructed after the effective train boundary is known, so a supplied
-    # display target must not influence freshness checks or model fitting.
+    # Calcular la huella de la entrada original. Reconstruir el objetivo
+    # tras conocer el límite efectivo de entrenamiento; el objetivo de
+    # visualización no debe influir en la comprobación de vigencia ni en el ajuste.
     clean_gold, dropped_rows, raw_score_column = _validated_training_frame(gold)
     input_fingerprint = dataset_fingerprint(gold)
     split = temporal_train_validation_test_split(
@@ -590,7 +568,7 @@ def train_and_select_model(
             prediction = artifact.predict(validation_x)
             validation_predictions[candidate.name] = prediction
             candidate.validation_metrics = regression_metrics(validation_y, prediction)
-        except Exception as exc:  # candidate failure should not discard the baseline
+        except Exception as exc:  # el fallo de un candidato no debe descartar el baseline
             candidate.error = f"Validation failure: {type(exc).__name__}: {exc}"
             candidate.validation_metrics = _empty_metrics()
 
@@ -610,7 +588,7 @@ def train_and_select_model(
         )
         if not final_candidate.available:
             raise RuntimeError(final_candidate.error or "The selected model could not be refitted.")
-    except Exception as exc:  # a working baseline is safer than failing the product
+    except Exception as exc:  # conservar un baseline válido evita inutilizar el producto
         warnings.append(
             f"El modelo seleccionado no pudo reentrenarse ({type(exc).__name__}); "
             "se utiliza el baseline."
@@ -640,8 +618,8 @@ def train_and_select_model(
     if not test_x.empty:
         test_prediction = artifact.predict(test_x)
         test_metrics = regression_metrics(test_y, test_prediction)
-        # The held-out test MAE is the most useful error estimate shown to a
-        # dashboard user. It does not participate in model selection.
+        # El MAE del test reservado es la estimación de error mostrada en la interfaz.
+        # No interviene en la selección del modelo.
         test_mae = _metric_value(test_metrics, "mae")
         if test_mae is not None:
             artifact.expected_mae = test_mae
@@ -705,7 +683,7 @@ def train_and_select_model(
 
 
 def persist_training_result(result: TrainingResult, artifact_dir: str | Path) -> dict[str, Path]:
-    """Persist a model and its auditable reports without touching source data."""
+    """Guarda modelo e informes auditables sin alterar fuentes."""
 
     destination = Path(artifact_dir)
     destination.mkdir(parents=True, exist_ok=True)
@@ -720,20 +698,20 @@ def persist_training_result(result: TrainingResult, artifact_dir: str | Path) ->
     _write_json(paths["metrics"], result.metrics)
     result.validation_predictions.to_csv(paths["validation_predictions"], index=False)
     result.test_predictions.to_csv(paths["test_predictions"], index=False)
-    # Import lazily to keep model training usable even if a UI-only optional
-    # explainability dependency is unavailable.
+    # Importar bajo demanda para permitir entrenar aunque falte una dependencia
+    # opcional de explicabilidad utilizada únicamente por la interfaz.
     try:
         from .explainability import global_feature_attributions
 
         attributions = global_feature_attributions(result.artifact).to_dict(orient="records")
-    except Exception as exc:  # persisted model and metrics remain more important
+    except Exception as exc:  # priorizar la conservación del modelo y sus métricas
         attributions = [{"warning": f"No se pudo calcular atribución: {type(exc).__name__}"}]
     _write_json(paths["feature_attributions"], attributions)
     return paths
 
 
 def load_model_artifact(path: str | Path | None = None) -> ReliabilityModelArtifact:
-    """Load a persisted :class:`ReliabilityModelArtifact` for dashboard use."""
+    """Carga ReliabilityModelArtifact persistido para la interfaz."""
 
     source = Path(path) if path is not None else ProjectPaths.discover().model_path
     if not source.exists():
@@ -751,11 +729,9 @@ def predict_with_artifact(
     include_explanations: bool = True,
     top_factors: int = 3,
 ) -> pd.DataFrame:
-    """Return dashboard-ready predictions for completed or recent cohorts.
-
-    The input needs only the documented feature columns.  It can therefore be
-    used on launches whose three-year recall window is not complete; their own
-    recall outcome is never queried by this function.
+    """Devuelve predicciones para cohortes completas o recientes. Solo necesita las
+    características documentadas, por lo que admite ventanas aún incompletas; nunca consulta
+    resultados propios del vehículo.
     """
 
     resolved = load_model_artifact(artifact) if isinstance(artifact, (str, Path)) else artifact
@@ -790,7 +766,7 @@ def prepare_feature_frame(
     *,
     feature_columns: Sequence[str] = MODEL_FEATURE_COLUMNS,
 ) -> pd.DataFrame:
-    """Validate and type model features without fitting any data-dependent step."""
+    """Valida y tipa características sin ajustar ningún paso dependiente de datos."""
 
     frame = _as_dataframe(data)
     required = tuple(feature_columns)
@@ -811,7 +787,7 @@ def prepare_feature_frame(
 
 
 def regression_metrics(y_true: Sequence[float], y_pred: Sequence[float]) -> dict[str, float | int | None]:
-    """Compute MAE and RMSE on the public 0--100 index scale."""
+    """Calcula MAE y RMSE en la escala pública 0–100."""
 
     actual = np.asarray(y_true, dtype=float).reshape(-1)
     predicted = np.asarray(y_pred, dtype=float).reshape(-1)
@@ -872,7 +848,7 @@ def _fit_candidate(
     *,
     random_state: int = 73,
 ) -> _Candidate:
-    """Fit one candidate on a train-only target transform, retaining errors."""
+    """Ajusta un candidato con transformación de entrenamiento y conserva errores."""
 
     if x.empty:
         return _Candidate(name=name, error="No hay filas de entrenamiento.")
@@ -902,11 +878,10 @@ def _fit_candidate(
 
 
 class BrandSegmentMedianImputer(TransformerMixin, BaseEstimator):
-    """Impute technical fields from fit-only make/segment medians.
-
-    Unseen groups fall back to a train segment median and then the numeric
-    SimpleImputer's global train median. Historical recall features do not get
-    filled from other years before this fitted preprocessing stage.
+    """Imputa campos técnicos con medianas de marca/segmento del ajuste. Grupos desconocidos
+    recurren a la mediana de segmento y después a la global de SimpleImputer, ambas de
+    entrenamiento. El historial de recalls no se completa con otros años antes de este
+    preprocesamiento ajustado.
     """
 
     technical_columns = ("mediana_cilindros", "mediana_cv")
@@ -939,8 +914,8 @@ def _build_ridge_pipeline() -> Pipeline:
 
 
 def _build_random_forest_pipeline(*, random_state: int, train_rows: int) -> Pipeline:
-    # Small temporal cohorts need a less restrictive leaf size, while larger
-    # ones get modest regularisation to limit overfitting.
+    # Las cohortes pequeñas necesitan hojas menos restrictivas; en cohortes
+    # mayores se introduce regularización moderada para limitar el sobreajuste.
     min_leaf = 1 if train_rows < 20 else 2
     return Pipeline(
         steps=[
@@ -982,8 +957,8 @@ def _build_preprocessor(*, scale_numeric: bool) -> ColumnTransformer:
 
 
 def _numeric_imputer() -> SimpleImputer:
-    # keep_empty_features avoids silently dropping a feature in a tiny cohort
-    # where every technical value happens to be missing.
+    # keep_empty_features evita eliminar silenciosamente una característica
+    # cuando todos sus valores técnicos faltan en una cohorte pequeña.
     kwargs: dict[str, Any] = {"strategy": "median"}
     if "keep_empty_features" in inspect.signature(SimpleImputer).parameters:
         kwargs["keep_empty_features"] = True
@@ -994,7 +969,7 @@ def _one_hot_encoder() -> OneHotEncoder:
     kwargs: dict[str, Any] = {"handle_unknown": "ignore"}
     if "sparse_output" in inspect.signature(OneHotEncoder).parameters:
         kwargs["sparse_output"] = False
-    else:  # pragma: no cover - compatibility with older scikit-learn releases
+    else:  # pragma: no cover - compatibilidad con versiones anteriores de scikit-learn
         kwargs["sparse"] = False
     return OneHotEncoder(**kwargs)
 
@@ -1005,12 +980,10 @@ def _select_candidate(
     has_validation: bool,
     advanced_improvement_threshold: float,
 ) -> tuple[str, str, float | None]:
-    """Choose the lowest-MAE eligible candidate without weakening the RF rule.
-
-    Random Forest eligibility is evaluated strictly against Ridge, as required,
-    even when the baseline happens to beat Ridge. Once eligible, it still has
-    to beat the baseline to be selected: a complex model is never chosen just
-    because Ridge was a weak comparator.
+    """Selecciona el candidato elegible con menor MAE sin debilitar la regla de Random Forest.
+    Su elegibilidad se compara estrictamente con Ridge, aunque el baseline lo supere; además
+    debe superar al baseline para ser seleccionado. Un comparador Ridge débil no justifica
+    elegir complejidad.
     """
 
     baseline = candidates["baseline"]
@@ -1038,7 +1011,7 @@ def _select_candidate(
 
     if not eligible:
         return "baseline", "Ningún candidato produjo una métrica válida; se conserva el baseline.", reduction
-    # Stable tie-breaking favours the simpler, more explainable method.
+    # En caso de empate, priorizar de forma estable el método más sencillo y explicable.
     preference = {"baseline": 0, "ridge": 1, "random_forest": 2}
     selected = min(eligible, key=lambda name: (eligible[name], preference[name]))
     if selected == "random_forest":
@@ -1076,12 +1049,10 @@ def _select_candidate(
 
 
 def _validated_training_frame(frame: pd.DataFrame) -> tuple[pd.DataFrame, int, str]:
-    """Reject unsafe Gold inputs before a split can hide their quality issue.
-
-    Missing technical fields are intentionally allowed because their imputer is
-    fitted inside each training pipeline.  Missing/invalid labels, IDs,
-    manufacturing years, duplicates, and incomplete cohorts are not safe to
-    repair in the modelling layer and therefore fail loudly.
+    """Rechaza Gold inseguro antes de que la partición oculte problemas. Permite campos
+    técnicos ausentes porque la imputación se ajusta dentro del entrenamiento. Etiquetas,
+    identificadores o años ausentes/inválidos, duplicados y cohortes incompletas provocan
+    error en vez de reparaciones injustificadas.
     """
 
     if not isinstance(frame, pd.DataFrame):
@@ -1118,8 +1089,8 @@ def _validated_training_frame(frame: pd.DataFrame) -> tuple[pd.DataFrame, int, s
 
     for column in NUMERIC_FEATURE_COLUMNS:
         numeric = pd.to_numeric(clean[column], errors="coerce")
-        # Null technical data is handled by a train-only SimpleImputer. Infinite
-        # values, unlike nulls, have no defensible median-based repair.
+        # SimpleImputer trata los nulos usando solo entrenamiento. Los infinitos,
+        # a diferencia de los nulos, no admiten una corrección justificable con la mediana.
         non_null = numeric.notna()
         if non_null.any() and not np.isfinite(numeric.loc[non_null].to_numpy(dtype=float)).all():
             raise ValueError(f"{column} contains a non-finite value; use null for an unknown measurement.")
@@ -1155,7 +1126,7 @@ def _with_train_scaled_target(
     split: TemporalSplit,
     normalizer: TemporalTargetNormalizer,
 ) -> TemporalSplit:
-    """Copy each partition and reconstruct its target from train-only stats."""
+    """Copia particiones y reconstruye sus objetivos con estadísticas de entrenamiento."""
 
     def scaled(frame: pd.DataFrame) -> pd.DataFrame:
         output = frame.copy()
@@ -1196,15 +1167,15 @@ def _target_statistics(y: Sequence[float]) -> tuple[float, float]:
     values = np.asarray(y, dtype=float)
     mean = float(np.mean(values))
     standard_deviation = float(np.std(values, ddof=0))
-    # A constant early cohort is legitimate. Unit scale preserves a stable,
-    # constant inverse transformation and lets all candidates run.
+    # Una cohorte temprana constante es válida. La escala unitaria mantiene
+    # estable la transformación inversa y permite evaluar todos los candidatos.
     if not np.isfinite(standard_deviation) or standard_deviation < 1e-12:
         standard_deviation = 1.0
     return mean, standard_deviation
 
 
 def _feature_references(frame: pd.DataFrame) -> dict[str, Any]:
-    """Compute train-only reference values for model-agnostic explanations."""
+    """Calcula referencias de entrenamiento para explicaciones independientes del modelo."""
 
     references: dict[str, Any] = {}
     prepared = prepare_feature_frame(frame)
@@ -1304,8 +1275,8 @@ def _as_dataframe(
     if isinstance(data, pd.DataFrame):
         return data.copy()
     if isinstance(data, Mapping):
-        # Dashboard calls normally supply scalar mappings. A mapping of arrays
-        # is also useful for batch prediction and is handled by pandas.
+        # La interfaz suele proporcionar diccionarios de escalares. Los diccionarios
+        # de vectores también permiten predicciones por lotes y pandas los admite.
         scalar_values = all(
             not isinstance(value, (list, tuple, np.ndarray, pd.Series)) for value in data.values()
         )

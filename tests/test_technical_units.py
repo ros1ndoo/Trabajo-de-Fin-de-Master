@@ -1,4 +1,4 @@
-"""Regression checks for explicit units and pre-split technical aggregation."""
+"""Regresiones de unidades explícitas y agregación técnica previa a particiones."""
 
 import numpy as np
 import pandas as pd

@@ -6,6 +6,11 @@ __pycache__/
 .venv/
 venv/
 .env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+*.pem
+*.key
 .vscode/
 artifacts/*
 !artifacts/feature_attributions.json
@@ -13,6 +18,10 @@ artifacts/*
 !artifacts/reliability_model.joblib
 !artifacts/test_predictions.csv
 !artifacts/validation_predictions.csv
+!artifacts/delivery_freeze.json
+!artifacts/frozen_evidence/
+ESTADO_PROYECTO_Y_PLAN_CALIDAD.md
+ENTREGA_VALIDACION.md
 reports/
 tmp/
 data/raw/**

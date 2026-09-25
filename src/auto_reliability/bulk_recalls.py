@@ -1,10 +1,8 @@
-"""Official NHTSA bulk snapshots, indexed without assuming missing means zero.
-
-Schema: https://static.nhtsa.gov/odi/ffdd/rcl/RCL.txt (29 fields, May 2025).
-Both PRE_2010 and POST_2010 files are required; the split concerns reports,
-not the model-year of the vehicle. The web/API explorer and training pipeline
-share the same immutable evidence, but never share a vehicle's future label
-with its prediction features.
+"""Instantáneas oficiales NHTSA indexadas sin interpretar ausencias como ceros. Esquema:
+https://static.nhtsa.gov/odi/ffdd/rcl/RCL.txt (29 campos, mayo de 2025). Se requieren
+PRE_2010 y POST_2010: la partición corresponde a informes, no a años-modelo. Explorador e
+ingesta comparten evidencia inmutable, nunca etiquetas futuras como características
+predictoras.
 """
 
 from __future__ import annotations
@@ -49,13 +47,12 @@ FIELDS = (
 
 
 def download_snapshot(paths: ProjectPaths, *, snapshot_date: str | None = None) -> Path:
-    """Download both bounded ZIP archives once; publish no partial downloads.
-
-    A failed archive can be retried without downloading the successful archive
-    again. The final manifest is published only after every archive validates.
+    """Descarga una vez ambos ZIP con tamaño acotado, sin publicar descargas parciales. Permite
+    reintentar el archivo fallido sin repetir el correcto; publica el manifiesto solo tras
+    validar ambos.
     """
     day = snapshot_date or datetime.now(timezone.utc).date().isoformat()
-    datetime.strptime(day, "%Y-%m-%d").replace(tzinfo=timezone.utc)  # Reject invalid paths/dates.
+    datetime.strptime(day, "%Y-%m-%d").replace(tzinfo=timezone.utc)  # Rechazar rutas y fechas inválidas.
     directory = paths.raw_dir / "nhtsa_bulk" / day
     directory.mkdir(parents=True, exist_ok=True)
     manifest: dict[str, Any] = {"snapshot_date": day, "files": []}
@@ -83,7 +80,7 @@ def download_snapshot(paths: ProjectPaths, *, snapshot_date: str | None = None) 
 
 
 def _validate_archive(path: Path) -> None:
-    """Reject unexpected members/size/CRC without extracting ZIP paths."""
+    """Rechaza miembros, tamaños o CRC inesperados sin extraer rutas del ZIP."""
     with zipfile.ZipFile(path) as archive:
         members = archive.infolist()
         if len(members) != 1 or not members[0].filename.lower().endswith((".txt", ".lst")):
@@ -95,10 +92,9 @@ def _validate_archive(path: Path) -> None:
 
 
 def read_archive(path: Path) -> pd.DataFrame:
-    """Read the documented tab-separated schema, failing on schema drift.
-
-    NHTSA historic text uses single-byte Windows characters. Preserve them via
-    latin-1 (lossless byte mapping); do not silently discard malformed rows.
+    """Lee el esquema tabulado documentado y falla ante cambios de estructura. Conserva
+    caracteres históricos Windows con latin-1, una correspondencia sin pérdida de bytes; no
+    descarta silenciosamente filas malformadas.
     """
     _validate_archive(path)
     rows: list[list[str]] = []
@@ -107,7 +103,7 @@ def read_archive(path: Path) -> pd.DataFrame:
                                                      delimiter="\t", quoting=csv.QUOTE_NONE), 1):
             if not row:
                 continue
-            # Some exports terminate every record with an extra delimiter.
+            # Algunas exportaciones terminan cada registro con un delimitador adicional.
             if len(row) == len(FIELDS) + 1 and row[-1] == "":
                 row.pop()
             if len(row) != len(FIELDS):
@@ -117,10 +113,9 @@ def read_archive(path: Path) -> pd.DataFrame:
 
 
 def build_bulk_index(paths: ProjectPaths, snapshot: Path) -> dict[str, Any]:
-    """Atomically index a complete snapshot for selectors and offline lookups.
-
-    Keep all vehicle makes and model-years >=1995 available in the official
-    source; do not restrict this explorer to CooperUnion's technical coverage.
+    """Indexa atómicamente una instantánea completa para selectores y consultas locales.
+    Conserva todas las marcas y años-modelo desde 1995 disponibles en la fuente oficial, sin
+    restringir el explorador a CooperUnion.
     """
     manifest_path = snapshot / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -144,7 +139,7 @@ def build_bulk_index(paths: ProjectPaths, snapshot: Path) -> dict[str, Any]:
     records["model_key"] = records.model.map(comparison_model)
     records["vehicle_id"] = [vehicle_id(m, n, y) for m, n, y in
                                records[["make", "model", "year"]].itertuples(index=False, name=None)]
-    # Store raw component rows, deduplicating campaigns only at normalization.
+    # Conservar componentes originales; deduplicar campañas solo al normalizar.
     vehicles = records[["vehicle_id", "make", "model", "year", "make_key", "model_key"]].drop_duplicates("vehicle_id")
     metadata = {"snapshot_date": manifest["snapshot_date"], "source_rows": total_rows,
                 "vehicle_recall_rows": len(records), "vehicles": len(vehicles),
@@ -167,25 +162,27 @@ def build_bulk_index(paths: ProjectPaths, snapshot: Path) -> dict[str, Any]:
 
 
 class BulkRecallStore:
-    """Read-only, parameterized access to the last completely published index."""
+    """Acceso parametrizado de solo lectura al último índice publicado completamente."""
 
     def __init__(self, paths: ProjectPaths) -> None:
         self.path = paths.processed_dir / "nhtsa_bulk.sqlite"
 
     @contextmanager
     def _connect(self) -> Iterator[sqlite3.Connection]:
-        # Windows cannot replace a database while a reader holds an open handle.
+        # Windows no permite reemplazar la base mientras un lector mantiene abierto el archivo.
         with (FileLock(str(self.path) + ".lock", timeout=30),
               closing(sqlite3.connect(self.path.resolve().as_uri() + "?mode=ro", uri=True, timeout=10)) as connection):
             yield connection
 
     def metadata(self) -> dict[str, Any]:
-        """Return snapshot provenance, not the current wall-clock as fetch time."""
+        """Devuelve la procedencia de la instantánea, no la hora actual como fecha de descarga."""
         with self._connect() as connection:
             return json.loads(connection.execute("SELECT payload FROM metadata").fetchone()[0])
 
     def catalog(self) -> pd.DataFrame:
-        """Return recall-bearing official candidates, NOT an outcome-independent universe."""
+        """Devuelve candidatos oficiales con campañas, NO un universo independiente del
+        resultado.
+        """
         with self._connect() as connection:
             frame = pd.read_sql_query("SELECT * FROM vehicles ORDER BY make, model, year", connection)
         frame = frame.rename(columns={"vehicle_id": "nhtsa_vehicle_id", "make": "marca", "model": "modelo",
@@ -198,7 +195,9 @@ class BulkRecallStore:
         return frame
 
     def payload(self, make: str, model: str, year: int) -> dict[str, Any] | None:
-        """Return an API-shaped result, or None for unknown (NEVER a false zero)."""
+        """Devuelve una respuesta con formato API o None para desconocidos, NUNCA un cero
+        falso.
+        """
         with self._connect() as connection:
             identity = connection.execute(
                 "SELECT vehicle_id FROM vehicles WHERE make=? COLLATE NOCASE AND model=? COLLATE NOCASE AND year=?",
@@ -222,7 +221,7 @@ class BulkRecallStore:
 
 
 def _iso_date(value: str) -> str:
-    """Reject missing dates instead of silently producing false zero labels."""
+    """Rechaza fechas ausentes en vez de generar silenciosamente etiquetas cero falsas."""
     try:
         return datetime.strptime(value, "%Y%m%d").replace(tzinfo=timezone.utc).date().isoformat()
     except ValueError as exc:
@@ -230,7 +229,7 @@ def _iso_date(value: str) -> str:
 
 
 def _sha256(path: Path) -> str:
-    """Streaming digest compatible with the project's Python 3.10 floor."""
+    """Calcula la huella por bloques, compatible con Python 3.10."""
     digest = hashlib.sha256()
     with path.open("rb") as stream:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
@@ -239,10 +238,9 @@ def _sha256(path: Path) -> str:
 
 
 class BulkSnapshotClient(NHTSARecallClient):
-    """Pipeline adapter: the full official snapshot replaces thousands of GETs.
-
-    Unknown vehicles stay unmatched. They are not assigned a zero label merely
-    because they are absent from a recall-bearing source.
+    """Adaptador de ingesta: sustituye miles de GET por la instantánea oficial completa. Los
+    vehículos desconocidos quedan sin cruce; su ausencia en una fuente de campañas no genera
+    etiquetas cero.
     """
 
     def __init__(self, paths: ProjectPaths) -> None:
@@ -250,11 +248,11 @@ class BulkSnapshotClient(NHTSARecallClient):
         self.store = BulkRecallStore(paths)
 
     def fetch_independent_vehicle_catalog(self, vehicles: Any, *, continue_on_error: bool = True) -> NHTSACatalogBatchResult:
-        """Expose every official identity; matching applies same-make/year rules."""
+        """Expone todas las identidades oficiales; el cruce exige misma marca y año."""
         return NHTSACatalogBatchResult(self.store.catalog(), [])
 
     def fetch_vehicle(self, make: object, model: object, year: int) -> NHTSAFetchResult:
-        """Read campaign evidence without querying the network or fabricating zeros."""
+        """Lee evidencia de campañas sin consultar la red ni fabricar ceros."""
         payload = self.store.payload(str(make), str(model), year)
         if payload is None:
             raise DataSourceError("Vehicle absent or ambiguous in the official bulk snapshot; recalls unknown.")

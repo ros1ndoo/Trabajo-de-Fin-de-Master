@@ -1,9 +1,7 @@
-"""Optional, strictly grounded local-LLM narrative selection.
-
-Set AUTO_RELIABILITY_OLLAMA_MODEL to an already installed Ollama model to opt
-in. No model is downloaded, no cloud service is called, and predictions never
-depend on this component. The model selects factual clauses, not new facts.
-API contract: https://docs.ollama.com/api/generate
+"""Selección narrativa opcional con un LLM local y hechos restringidos.
+AUTO_RELIABILITY_OLLAMA_MODEL debe apuntar a un modelo Ollama ya instalado. No descarga
+modelos ni llama a la nube; la predicción nunca depende de este componente. Selecciona
+cláusulas existentes, no hechos nuevos. Contrato: https://docs.ollama.com/api/generate
 """
 
 from __future__ import annotations
@@ -22,11 +20,10 @@ DISCLAIMER = "Estas atribuciones describen el modelo, no causas de averías. El 
 
 
 def build_grounded_narrative(factors, fallback_text, *, model=None, base_url=None, session=None):
-    """Select up to three approved clauses; fail closed to deterministic text.
-
-    A constrained JSON response may only reorder existing clause identifiers.
-    Arbitrary prose, new numbers, invented features and omitted leading effects
-    are rejected before anything is displayed to the user.
+    """Selecciona hasta tres cláusulas aprobadas y recurre al texto determinista ante fallo. El
+    JSON restringido solo puede ordenar identificadores existentes; rechaza prosa
+    arbitraria, cifras o características inventadas y omisión de efectos principales antes
+    de mostrar nada.
     """
     fallback = {"text": fallback_text, "mode": "determinista",
                 "note": "Resumen determinista de atribuciones; no establece causalidad."}

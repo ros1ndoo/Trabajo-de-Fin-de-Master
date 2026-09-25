@@ -1,11 +1,8 @@
-"""Human-readable and auditable feature attribution utilities.
-
-Ridge receives signed local coefficient contributions relative to train-only
-reference values (before the public score is clipped). The tree model
-uses exact Shapley values over the five original features with a single
-train-reference background. It evaluates all 32 coalitions in one batch;
-there is no dependency on an optional explanation package. Global tree
-impurity importance is labelled separately and is never called SHAP.
+"""Atribuciones legibles y auditables. Ridge utiliza contribuciones locales con signo respecto
+a referencias de entrenamiento antes de recortar el índice. El árbol usa valores Shapley
+exactos sobre cinco características y un único fondo de entrenamiento: evalúa 32 coaliciones
+por lote, sin dependencia opcional. La importancia global por impureza se identifica por
+separado y nunca se llama SHAP.
 """
 
 from __future__ import annotations
@@ -35,12 +32,9 @@ SPANISH_FEATURE_NAMES: dict[str, str] = {
 
 
 def global_feature_attributions(artifact: ReliabilityModelArtifact) -> pd.DataFrame:
-    """Return global feature importance, grouped to the original schema.
-
-    Values are comparable within a model and sum to one where an estimator
-    exposes a native importance vector.  Baseline has a single semantic factor
-    because its forecast is explicitly built from historical make/segment
-    means.
+    """Devuelve importancia global agrupada al esquema original. Los valores son comparables
+    dentro del modelo y suman uno si el estimador aporta importancias nativas. El baseline
+    tiene un factor semántico basado en medias históricas de marca/segmento.
     """
 
     if artifact.model_name == "baseline" or isinstance(artifact.estimator, BrandSegmentMeanBaseline):
@@ -82,11 +76,9 @@ def explain_prediction(
     *,
     top_n: int = 3,
 ) -> list[dict[str, Any]]:
-    """Explain one prediction with signed score-point effects.
-
-    ``data`` must contain exactly one row.  Positive contributions indicate a
-    factor associated with a higher predicted index (lower estimated recall
-    propensity); negative contributions point in the opposite direction.
+    """Explica una predicción mediante efectos con signo en puntos del índice. data debe
+    contener una fila. Contribuciones positivas se asocian con mayor índice y menor
+    propensión estimada; las negativas indican la dirección contraria.
     """
 
     if top_n < 1:
@@ -110,7 +102,7 @@ def explain_prediction(
 
 
 def _baseline_explanation(artifact: ReliabilityModelArtifact, features: pd.DataFrame) -> list[dict[str, Any]]:
-    """Describe the actual fitted lookup, not counterfactual technical effects."""
+    """Describe la consulta al grupo realmente ajustado, no efectos técnicos contrafactuales."""
     _, levels = artifact.estimator.predict_with_sources(features)
     level = levels[0]
     row = features.iloc[0]
@@ -131,14 +123,14 @@ def explain_predictions(
     *,
     top_n: int = 3,
 ) -> list[list[dict[str, Any]]]:
-    """Batch counterpart of :func:`explain_prediction`."""
+    """Versión por lotes de explain_prediction."""
 
     features = prepare_feature_frame(data, feature_columns=artifact.feature_columns)
     return [explain_prediction(artifact, row.to_frame().T, top_n=top_n) for _, row in features.iterrows()]
 
 
 def summarize_attributions(factors: Sequence[Mapping[str, Any]]) -> str:
-    """Make a concise Spanish explanation suitable for the dashboard/PDF."""
+    """Genera una explicación breve en castellano para interfaz y PDF."""
 
     if not factors:
         return "No hay factores explicativos disponibles para esta estimación."
@@ -200,8 +192,8 @@ def _ridge_local_attributions(
         {feature: artifact.feature_references.get(feature, _default_reference(feature))
          for feature in artifact.feature_columns}
     ])
-    # Use exactly the same fitted group-level imputation as prediction.
-    # Older persisted pipelines without this step remain readable.
+    # Usar exactamente la misma imputación ajustada por grupo que en la predicción.
+    # Las canalizaciones antiguas sin este paso siguen siendo legibles.
     group_imputer = pipeline.named_steps.get("group_imputer")
     actual_input = group_imputer.transform(features) if group_imputer is not None else features
     reference_input = group_imputer.transform(reference) if group_imputer is not None else reference
@@ -236,7 +228,7 @@ def _ridge_local_attributions(
 def _counterfactual_attributions(
     artifact: ReliabilityModelArtifact, features: pd.DataFrame
 ) -> list[dict[str, Any]]:
-    """Replace one feature by its train-only reference and measure the shift."""
+    """Sustituye una característica por su referencia de entrenamiento y mide el cambio."""
 
     original = float(artifact.predict(features)[0])
     factors: list[dict[str, Any]] = []
@@ -260,15 +252,11 @@ def _counterfactual_attributions(
 def _exact_reference_shapley(
     artifact: ReliabilityModelArtifact, features: pd.DataFrame
 ) -> list[dict[str, Any]]:
-    """Exact additive SHAP for a explicitly defined single-reference game.
-
-    Each coalition retains query values for participating original features
-    and fills the others with training medians/modes. This is interventional
-    attribution relative to that single background, not conditional SHAP over
-    the whole population and not a causal effect. Interactions are shared by
-    the classic Shapley weights |S|!(n-|S|-1)!/n!.
-
-    Background: Lundberg and Lee (NeurIPS 2017),
+    """SHAP aditivo exacto para un juego de referencia única explícita. Cada coalición conserva
+    valores de características participantes y sustituye otras por medianas/modas de
+    entrenamiento. Es atribución intervencional relativa a ese fondo, no SHAP condicional
+    poblacional ni efecto causal. Reparte interacciones con pesos |S|!(n-|S|-1)!/n!.
+    Referencia: Lundberg y Lee, NeurIPS 2017,
     https://proceedings.neurips.cc/paper/2017/hash/8a20a8621978632d76c43dfd28b67767-Abstract.html
     """
 
@@ -310,8 +298,8 @@ def _exact_reference_shapley(
 
 def _source_feature(transformed_name: str, feature_columns: Sequence[str]) -> str:
     bare = transformed_name.split("__", 1)[-1]
-    # One-hot names use ``feature_category``.  Sort longest first in case one
-    # feature name is a prefix of another one.
+    # Los nombres one-hot siguen feature_category. Ordenar primero los más largos
+    # por si el nombre de una característica es prefijo de otro.
     for source in sorted(feature_columns, key=len, reverse=True):
         if bare == source or bare.startswith(f"{source}_"):
             return source

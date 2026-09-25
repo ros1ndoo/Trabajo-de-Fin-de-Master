@@ -1,8 +1,6 @@
-"""Auditable fuzzy matching between technical specifications and NHTSA vehicles.
-
-The matching policy is intentionally conservative.  A high similarity score is
-accepted automatically, ambiguous candidates are *not* silently joined, and a
-human decision can only accept the documented ``root name`` / trim-suffix case.
+"""Cruce difuso auditable entre especificaciones y vehículos NHTSA. La política es
+conservadora: acepta similitud alta, no une candidatos ambiguos silenciosamente y restringe
+decisiones humanas al caso documentado de nombre raíz y sufijo de acabado.
 """
 
 from __future__ import annotations
@@ -23,18 +21,16 @@ AUTO_ACCEPT_THRESHOLD = 90
 MANUAL_REVIEW_THRESHOLD = 75
 
 
-try:  # The project dependency is TheFuzz; fallback keeps source inspection usable.
+try:  # TheFuzz es la dependencia principal; el respaldo permite inspeccionar el código.
     from thefuzz.fuzz import token_set_ratio as _thefuzz_token_set_ratio
-except ImportError:  # pragma: no cover - exercised only before dependency install
+except ImportError:  # pragma: no cover - solo se ejecuta antes de instalar las dependencias
     _thefuzz_token_set_ratio = None
 
 
 def token_set_ratio(left: object, right: object) -> int:
-    """Return TheFuzz's token-set similarity, with a deterministic fallback.
-
-    The fallback follows the same useful property for our data: a trim suffix
-    such as ``Civic LX`` does not penalise a base ``Civic`` match, unlike a
-    different model family such as ``F-150`` vs. ``F-250``.
+    """Devuelve similitud de conjuntos de tokens de TheFuzz con respaldo determinista. Un
+    sufijo como Civic LX no penaliza Civic, pero se mantienen las diferencias entre familias
+    como F-150 y F-250.
     """
 
     left_text, right_text = comparison_model(left), comparison_model(right)
@@ -57,9 +53,9 @@ def token_set_ratio(left: object, right: object) -> int:
     return round(100 * max(ratios))
 
 
-# Terms that describe a version/body/drive configuration rather than the core
-# commercial name.  Numbers are deliberately retained: they distinguish
-# F-150 from F-250 and C-Class from E-Class.
+# Términos de versión, carrocería o tracción, no del nombre comercial
+# principal. Conservar números y raíces significativas: distinguen
+# F-150 de F-250 y C-Class de E-Class.
 TRIM_TOKENS = frozenset(
     {
         "base",
@@ -107,7 +103,7 @@ TRIM_TOKENS = frozenset(
 
 
 def model_root_name(value: object) -> str:
-    """Extract the conservative core model name used in manual-review advice."""
+    """Extrae la raíz conservadora del modelo para orientar la revisión manual."""
 
     tokens = [token for token in comparison_model(value).split() if token not in TRIM_TOKENS]
     return " ".join(tokens)
@@ -115,7 +111,7 @@ def model_root_name(value: object) -> str:
 
 @dataclass(frozen=True)
 class MatchSummary:
-    """Matching quality metrics used to decide whether the contingency applies."""
+    """Métricas de calidad del cruce para decidir si se aplica la contingencia."""
 
     technical_rows: int
     auto_accepted: int
@@ -134,7 +130,7 @@ class MatchSummary:
 
     @property
     def contingency_recommended(self) -> bool:
-        """True when the documented 40% orphan-rate contingency threshold is hit."""
+        """Indica si se alcanza el umbral documentado de contingencia del 40% de huérfanos."""
 
         return self.loss_rate > 0.40
 
@@ -200,7 +196,7 @@ def _normalise_nhtsa_keys(nhtsa_vehicles: pd.DataFrame) -> pd.DataFrame:
         ]
     frame["_marca_key"] = frame["marca"].map(comparison_make)
     frame["_modelo_key"] = frame["modelo"].map(comparison_model)
-    # A repeated API query must not create several candidates for one logical vehicle.
+    # Una consulta repetida no debe crear varios candidatos para un mismo vehículo lógico.
     return frame.drop_duplicates("nhtsa_vehicle_id", keep="first").reset_index(drop=True)
 
 
@@ -222,22 +218,12 @@ def match_technical_to_recalls(
     require_catalog_verified: bool = False,
     audit_path: str | Path | None = None,
 ) -> pd.DataFrame:
-    """Match each technical vehicle to one same-make, same-year NHTSA query.
-
-    Policy required by the thesis:
-
-    * score >= 90: accepted automatically;
-    * score 75--89: emitted as ``manual_review`` and excluded from joins until
-      an explicit reviewed decision is applied;
-    * score < 75: rejected automatically.
-
-    Make and year are never fuzzy matched, which avoids a superficially similar
-    name leaking recalls from a different manufacturer or production year.
-
-    Set ``require_catalog_verified=True`` in production.  It refuses the old
-    anti-pattern of constructing NHTSA candidates by echoing the technical CSV
-    into the recall API, which makes every row appear to match itself and turns
-    invalid direct zero responses into false labels.
+    """Cruza cada vehículo con una consulta NHTSA de igual marca/año. Política: >=90 acepta;
+    75–89 requiere revisión explícita y queda fuera de uniones mientras tanto; <75 rechaza.
+    Marca y año nunca se comparan de forma difusa. En producción,
+    require_catalog_verified=True impide construir candidatos copiando el CSV técnico a la
+    API: ese antipatrón parece emparejar cada fila consigo misma y convierte respuestas
+    inválidas vacías en etiquetas falsas.
     """
 
     if not 0 <= manual_review_threshold <= auto_accept_threshold <= 100:
@@ -261,9 +247,9 @@ def match_technical_to_recalls(
         for key, group in recalls.groupby(["_marca_key", "ano_fabricacion"], sort=False)
     }
     rows: list[dict[str, object]] = []
-    # ``iterrows`` is deliberate here: pandas renames leading-underscore
-    # columns in named tuples, while the comparison-key names below are part of
-    # this module's internal contract.
+    # Usar iterrows deliberadamente: pandas renombra las columnas que empiezan
+    # por guion bajo al crear tuplas con nombre, pero esas claves forman
+    # parte del contrato interno de este módulo.
     for _, item_dict in tech.iterrows():
         vehicle_identifier = str(item_dict["id_vehiculo_ano"])
         candidates = candidates_by_key.get((item_dict["_marca_key"], int(item_dict["ano_fabricacion"])))
@@ -363,12 +349,9 @@ def apply_manual_match_decisions(
     *,
     enforce_root_name_rule: bool = True,
 ) -> pd.DataFrame:
-    """Apply explicit human decisions to 75--89 matching cases.
-
-    A decision table needs an ``id_vehiculo_ano`` column and one of
-    ``decision_manual``, ``manual_approved`` or ``decision``.  By default an
-    approval whose root names differ is refused, implementing the documented
-    Civic/Civic-LX acceptance but F-150/F-250 rejection rule.
+    """Aplica decisiones humanas a casos de similitud 75–89. La tabla exige id_vehiculo_ano y
+    decision_manual, manual_approved o decision. Por defecto rechaza raíces distintas:
+    permite Civic/Civic-LX, no F-150/F-250.
     """
 
     require_columns(matches, MATCH_COLUMNS, context="Fuzzy match table")
@@ -415,12 +398,10 @@ def apply_manual_match_decisions(
 def apply_documented_equivalences(
     matches: pd.DataFrame, decisions: pd.DataFrame, catalog: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Apply human-reviewed, single-model-year equivalences with provenance.
-
-    This validates the review record, not the truth of its documentary claim.
-    No equivalences are generated automatically. Cross-brand/year and numeric
-    root differences remain prohibited. The chosen official candidate must be
-    present in the verified catalog; free-text official names are not accepted.
+    """Aplica equivalencias revisadas por humanos para un año-modelo y con procedencia. Valida
+    el registro de revisión, no la verdad documental. No genera equivalencias; prohíbe
+    cambios de marca/año y raíces numéricas. El candidato debe existir en el catálogo
+    verificado, no ser un nombre libre.
     """
     fields = ("id_vehiculo_ano", "nhtsa_vehicle_id", "reviewer", "reviewed_at",
               "evidence_url", "evidence_sha256", "justification")
@@ -475,14 +456,14 @@ def apply_documented_equivalences(
 
 
 def accepted_matches(matches: pd.DataFrame) -> pd.DataFrame:
-    """Return only matches authorised to transfer recall evidence."""
+    """Devuelve únicamente cruces autorizados a transferir evidencia de campañas."""
 
     require_columns(matches, MATCH_COLUMNS, context="Fuzzy match table")
     return matches.loc[matches["match_status"].isin(("auto_accepted", "manual_accepted"))].copy()
 
 
 def summarise_matches(matches: pd.DataFrame) -> MatchSummary:
-    """Calculate audit metrics without treating unresolved cases as matches."""
+    """Calcula métricas sin contar como aceptados los casos sin resolver."""
 
     require_columns(matches, MATCH_COLUMNS, context="Fuzzy match table")
     statuses = matches["match_status"].value_counts()
@@ -500,7 +481,7 @@ def summarise_matches(matches: pd.DataFrame) -> MatchSummary:
 
 
 def write_fuzzy_audit(matches: pd.DataFrame, audit_path: str | Path) -> Path:
-    """Persist every matching decision, including accepted rows, for audit."""
+    """Guarda todas las decisiones, incluidas las aceptadas, para auditoría."""
 
     require_columns(matches, MATCH_COLUMNS, context="Fuzzy match table")
     path = Path(audit_path)

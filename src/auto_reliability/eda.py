@@ -1,4 +1,4 @@
-"""Reproducible exploratory analysis for the completed gold cohorts."""
+"""Análisis exploratorio reproducible de cohortes Gold completas."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from pathlib import Path
 
 import matplotlib
 
-# This module is also invoked in non-interactive CI and CLI environments.
+# Este módulo también se ejecuta sin interacción en CI y en la línea de comandos.
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -16,7 +16,7 @@ from .contracts import validate_gold_dataset
 
 
 def eda_summary(gold: pd.DataFrame) -> dict[str, object]:
-    """Return concise, serialisable quality and distribution statistics."""
+    """Devuelve estadísticas breves y serializables de calidad y distribución."""
 
     validate_gold_dataset(gold)
     target = gold["indice_fiabilidad_100"]
@@ -32,7 +32,7 @@ def eda_summary(gold: pd.DataFrame) -> dict[str, object]:
 
 
 def generate_eda_figures(gold: pd.DataFrame, output_dir: str | Path) -> list[Path]:
-    """Write a small, review-ready EDA set and return exact generated paths."""
+    """Guarda un conjunto exploratorio revisable y devuelve sus rutas exactas."""
 
     validate_gold_dataset(gold)
     destination = Path(output_dir)

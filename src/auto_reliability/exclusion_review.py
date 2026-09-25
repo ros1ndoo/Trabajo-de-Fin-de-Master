@@ -1,4 +1,6 @@
-"""Independent identity evidence and recall-query triage, never automatic labels."""
+"""Evidencia independiente de identidad y clasificación de consultas, nunca etiquetas
+automáticas.
+"""
 
 from __future__ import annotations
 
@@ -26,11 +28,10 @@ from .storage import atomic_json
 
 
 def independent_identities(technical: pd.DataFrame, inventory: pd.DataFrame) -> list[dict[str, Any]]:
-    """Resolve exact normalized family/year names, without fuzzy or trim aliases.
-
-    Multiple EPA variants with the same family are retained as source IDs, not
-    counted as independent recall evidence. Different names collapsing to one
-    key require review. EPA absence is not evidence that a vehicle never existed.
+    """Resuelve familia/año por nombres normalizados exactos, sin alias difusos ni de acabados.
+    Conserva variantes EPA como identificadores de fuente, no evidencia independiente de
+    campañas. Colisiones de nombres requieren revisión; ausencia EPA no prueba inexistencia
+    del vehículo.
     """
     if technical.id_vehiculo_ano.isna().any() or technical.id_vehiculo_ano.duplicated().any():
         raise ValueError("Technical identities must be unique and non-null")
@@ -54,10 +55,9 @@ def independent_identities(technical: pd.DataFrame, inventory: pd.DataFrame) -> 
 
 
 def query_identity(client: NHTSARecallClient, row: dict[str, Any]) -> dict[str, Any]:
-    """Preserve response hashes and distinguish empty from failed retrieval.
-
-    Neither positive nor empty responses approve a technical-to-recall crosswalk.
-    A separate reviewed linkage and window coverage are still needed for Gold.
+    """Conserva hashes de respuestas y distingue vacío de recuperación fallida. Ni respuestas
+    positivas ni vacías aprueban el vínculo técnico con recalls: Gold sigue requiriendo
+    cruce revisado y cobertura de ventana.
     """
     result = dict(row)
     if row["independent_identity_status"] != "exact_independent_identity":
@@ -80,11 +80,9 @@ def query_identity(client: NHTSARecallClient, row: dict[str, Any]) -> dict[str, 
 
 
 def review_exclusions(paths: ProjectPaths, *, snapshot_date: str, query_limit: int = 0) -> Path:
-    """Audit all catalogue identities; optionally query a bounded resumable batch.
-
-    Limit zero performs no network requests. Repeated invocations select pending
-    records; failed and completed records retain their evidence for explicit review.
-    Source/model hashes separate runs so evidence cannot leak between versions.
+    """Audita todas las identidades y permite consultar un lote acotado reanudable. Límite cero
+    no usa red; repeticiones consultan pendientes y conservan fallos y observaciones para
+    revisión explícita. Los hashes separan versiones para evitar mezclar evidencia.
     """
     if query_limit < 0:
         raise ValueError("Query limit must be nonnegative")
@@ -134,5 +132,5 @@ def review_exclusions(paths: ProjectPaths, *, snapshot_date: str, query_limit: i
                    and row["recall_query_status"] == "not_queried"]
         for index in pending[:query_limit]:
             rows[index] = query_identity(client, rows[index])
-            save()  # Resume after interruption without losing already completed observations.
+            save()  # Reanudar sin perder observaciones ya completadas.
     return destination

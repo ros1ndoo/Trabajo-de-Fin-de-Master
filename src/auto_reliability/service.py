@@ -1,9 +1,6 @@
-"""Backend facade consumed by the Streamlit dashboard.
-
-The service keeps inference, fallback logic and display context in one place so
-the UI never reads a vehicle's own recall-derived target as a prediction
-feature. It can bootstrap an explicitly labelled synthetic demo when a fresh
-clone has no data artefacts yet.
+"""Fachada del servicio para Streamlit. Centraliza inferencia, respaldos y contexto para que la
+interfaz nunca utilice la etiqueta propia como predictor. Puede crear una demostración
+explícitamente sintética si un clon no contiene artefactos y se autoriza ese modo.
 """
 
 from __future__ import annotations
@@ -36,16 +33,16 @@ from .reporting import build_prediction_report_pdf
 
 
 class VehicleNotFoundError(LookupError):
-    """Raised when a requested make/model/year does not exist in the catalogue."""
+    """Indica que la marca/modelo/año solicitados no existen en el catálogo."""
 
 
 class InsufficientEvidenceError(ValueError):
-    """No trained model or mature reference exists; do not invent a score."""
+    """No hay modelo entrenado ni referencia madura; no inventar una puntuación."""
 
 
 @dataclass(frozen=True)
 class ServiceStatus:
-    """A small, UI-friendly description of the loaded data and model state."""
+    """Descripción breve del estado de datos y modelo para la interfaz."""
 
     demo_mode: bool
     catalog_rows: int
@@ -60,17 +57,10 @@ class ServiceStatus:
 
 
 class ReliabilityService:
-    """Load project artefacts and make leakage-safe vehicle predictions.
-
-    Parameters
-    ----------
-    paths:
-        Optional custom project paths, useful for isolated tests/deployments.
-    auto_bootstrap_demo:
-        When explicitly true, a clone without outputs receives a clearly
-        labelled synthetic demo so ``streamlit run app.py`` is immediately
-        usable. Set ``AUTO_RELIABILITY_AUTO_DEMO=0`` or pass ``False`` to
-        require real artefacts instead.
+    """Carga artefactos e infiere sin utilizar resultados propios del vehículo. paths permite
+    rutas alternativas para pruebas o despliegues. auto_bootstrap_demo=True autoriza datos
+    sintéticos explícitos en un clon sin resultados; AUTO_RELIABILITY_AUTO_DEMO=0 o False
+    exige artefactos reales.
     """
 
     def __init__(
@@ -95,12 +85,14 @@ class ReliabilityService:
         self._runtime_revision: tuple | None = None
 
     def data_revision(self) -> tuple:
-        """A cheap revision token for invalidating a live session after ingestion."""
+        """Devuelve un identificador económico de revisión para invalidar sesiones tras
+        ingesta.
+        """
         return tuple((str(path), path.stat().st_mtime_ns if path.exists() else None)
                      for path in (self.paths.gold_path, self.paths.inference_catalog_path, self.paths.model_path))
 
     def status(self) -> ServiceStatus:
-        """Return current service status without exposing internal exceptions."""
+        """Devuelve el estado actual sin exponer excepciones internas."""
 
         catalog = self.load_catalog()
         gold = self._load_gold()
@@ -141,7 +133,7 @@ class ReliabilityService:
         )
 
     def exclusion_review_status(self) -> dict[str, Any] | None:
-        """Expose separate research progress only when it matches the pinned data."""
+        """Expone progreso de investigación separado solo si coincide con los datos fijados."""
         from .fuel_economy import digest
         path = self.project_paths.processed_dir / "exclusion_review/latest.json"
         if not path.exists():
@@ -164,7 +156,9 @@ class ReliabilityService:
             return {"error": "La revisión independiente no supera los controles de integridad."}
 
     def inventory_alignment_status(self) -> dict[str, Any] | None:
-        """Read optional independent-inventory progress, never prediction inputs."""
+        """Lee el progreso opcional del inventario independiente, nunca características
+        predictoras.
+        """
         path = self.project_paths.processed_dir / "inventory_resolution" / "latest.json"
         if not path.exists():
             return None
@@ -181,7 +175,7 @@ class ReliabilityService:
             return {"error": "No se pudo validar el informe del inventario complementario."}
 
     def load_catalog(self) -> pd.DataFrame:
-        """Return one row per vehicle-year, including recent inference cohorts."""
+        """Devuelve una fila por vehículo-año, incluidas cohortes recientes para inferencia."""
 
         self._ensure_artifacts()
         if self._catalog is not None:
@@ -193,15 +187,15 @@ class ReliabilityService:
         elif gold.empty:
             catalog = inference.copy()
         else:
-            # Gold is authoritative for completed labelled cohorts. The
-            # inference table contributes only rows absent from Gold.
+            # Gold es la referencia para cohortes completas con etiqueta. La tabla
+            # de inferencia solo aporta las filas que faltan en Gold.
             gold_ids = set(gold.get("id_vehiculo_ano", pd.Series(dtype=str)).astype(str))
             only_inference = inference.loc[
                 ~inference.get("id_vehiculo_ano", pd.Series(dtype=str)).astype(str).isin(gold_ids)
             ].copy()
             catalog = pd.concat([gold, only_inference], ignore_index=True, sort=False)
-            # Keep diagnostics from the SAME pinned inference artifact even for
-            # Gold rows. Never read mutable working SQLite to enrich a release.
+            # Conservar los diagnósticos del MISMO catálogo fijado, también para filas
+            # de Gold. No enriquecer una publicación con la base SQLite mutable.
             diagnostic_columns = [column for column in (
                 "identity_status", "query_status", "candidate_query_status", "window_status",
                 "included_in_gold", "primary_reason", "window_outcome", "evidence_as_of",
@@ -225,7 +219,9 @@ class ReliabilityService:
         return self._catalog.copy()
 
     def predict(self, marca: str, modelo: str, ano_fabricacion: int, *, identity_verified: bool = False) -> dict[str, Any]:
-        """Predict one catalogued vehicle using only launch-time features."""
+        """Estima un vehículo catalogado usando únicamente las características admitidas del
+        lanzamiento.
+        """
 
         catalog = self.load_catalog()
         row = self._lookup(catalog, marca, modelo, ano_fabricacion)
@@ -237,8 +233,8 @@ class ReliabilityService:
             return self._baseline_prediction(row, context, reason="Vehículo sin cruce NHTSA aceptado.")
 
         feature_row = pd.DataFrame([{feature: row.get(feature) for feature in PREDICTION_FEATURES}])
-        # ``predict_with_artifact`` deliberately only receives PREDICTION_FEATURES;
-        # neither score_recalls_bruto nor indice_fiabilidad_100 can leak in.
+        # predict_with_artifact recibe exclusivamente PREDICTION_FEATURES;
+        # no pueden filtrarse score_recalls_bruto ni indice_fiabilidad_100.
         output = predict_with_artifact(artifact, feature_row, include_explanations=False).iloc[0].to_dict()
         factors = explain_prediction(artifact, feature_row, top_n=4)
         result: dict[str, Any] = {
@@ -287,18 +283,16 @@ class ReliabilityService:
         return result
 
     def comparison_context(self, marca: str, modelo: str, ano_fabricacion: int) -> dict[str, Any]:
-        """Expose non-predictive display context for integrations beyond Streamlit."""
+        """Expone contexto no predictivo para integraciones distintas de Streamlit."""
 
         catalog = self.load_catalog()
         return self._context(catalog, self._lookup(catalog, marca, modelo, ano_fabricacion))
 
     def predict_on_demand(self, marca: str, modelo: str, ano_fabricacion: int) -> dict[str, Any]:
-        """Acquire official evidence before answering, without leaking outcomes.
-
-        Current recalls are returned as separate provenance only. Prediction
-        features and the frozen training artifact are never enriched with the
-        selected vehicle's own outcomes. Historical features are prepared by
-        the complete offline pipeline, not trained inside a web request.
+        """Obtiene evidencia oficial antes de responder, sin filtrar resultados al predictor.
+        Devuelve recalls actuales como procedencia separada; no enriquece características ni
+        modelo congelado con resultados propios. El historial se prepara en la ingesta
+        completa, no se entrena dentro de una solicitud web.
         """
         catalog = self.load_catalog()
         row = self._lookup(catalog, marca, modelo, ano_fabricacion)
@@ -329,9 +323,9 @@ class ReliabilityService:
             raise InsufficientEvidenceError("Identidad NHTSA no verificada o cruce ambiguo. No se generará una puntuación.")
         if row.get("origen_hist_fiabilidad_marca") != "marca_cohortes_completadas_previas" and not baseline_supported:
             raise InsufficientEvidenceError("Sin cohortes previas suficientes de esta marca para una predicción individual. Consulte los recalls oficiales.")
-        # An observed own label is not a prerequisite for a trained prediction.
-        # The selected baseline only uses brand/segment, not recent-history or
-        # technical numeric features. Its exact fitted policy and MAE stay fixed.
+        # Una etiqueta propia observada no es requisito para usar el modelo entrenado.
+        # El baseline seleccionado solo utiliza marca y segmento, no el historial
+        # reciente ni características numéricas. Su política ajustada y MAE no cambian.
         query_make = str(matches.iloc[0]["marca_nhtsa"]) if not matches.empty else str(row["marca"])
         query_model = str(matches.iloc[0]["modelo_nhtsa"]) if not matches.empty else str(row["modelo"])
         try:
@@ -345,8 +339,8 @@ class ReliabilityService:
             provenance = {"count": None, "fetched_at": None, "from_cache": False, "source": None,
                           "status": "unavailable", "error_type": type(exc).__name__,
                           "notice": "Consulta oficial no disponible. No significa cero recalls; puede reintentarse."}
-        # Identity comes from the validated technical catalog when recall name
-        # alignment is unavailable. No current recall enters predictor features.
+        # Si no hay cruce de nombres, la identidad procede del catálogo técnico validado.
+        # Ningún recall actual entra en las características del predictor.
         result = self.predict(marca, modelo, ano_fabricacion, identity_verified=True)
         result["evidencia_oficial"] = provenance
         result["mensaje"] = (str(result.get("mensaje", "")) +
@@ -367,7 +361,7 @@ class ReliabilityService:
         return result
 
     def build_prediction_report_pdf(self, prediction: Mapping[str, Any]) -> bytes:
-        """Dashboard hook for a controlled, local PDF summary."""
+        """Exportación de la interfaz para un resumen PDF local controlado."""
 
         return build_prediction_report_pdf(prediction)
 
@@ -384,7 +378,7 @@ class ReliabilityService:
         if not self.auto_bootstrap_demo:
             return
         if self.paths.inference_catalog_path.exists():
-            return  # A partial real pipeline must never be overwritten by a demo.
+            return  # Nunca sobrescribir datos reales parciales con una demostración.
         self.paths = ProjectPaths(self.project_paths.data_dir / "demo")
         if self.paths.gold_path.exists():
             self._demo_mode = True
@@ -534,7 +528,7 @@ class ReliabilityService:
             "ano_fabricacion": year,
             "categoria_vehiculo": row.get("categoria_vehiculo", "sin_categoria"),
             "prediccion_indice_100": float(np.clip(score, 0, 100)),
-            "mae": None,  # Dispersion around a fitted mean is not held-out MAE.
+            "mae": None,  # La dispersión respecto a una media ajustada no es el MAE de test.
             "modelo_usado": "Baseline histórico",
             "es_baseline": True,
             "fallback": True,
@@ -556,13 +550,13 @@ class ReliabilityService:
         }
 
     def real_recalls_catalog(self) -> pd.DataFrame:
-        """Load the full official index, not only vehicles previously queried."""
+        """Carga el índice oficial completo, no solo vehículos consultados previamente."""
         from .bulk_recalls import BulkRecallStore
         store = BulkRecallStore(self.project_paths)
         if store.path.exists():
             return store.catalog()
-        # Compatibility for deployments that have not yet downloaded the bulk
-        # source. The UI labels this cache as incomplete, not a full catalogue.
+        # Compatibilidad con despliegues sin descarga de la fuente masiva.
+        # La interfaz identifica esta caché como incompleta, no como catálogo completo.
         rows = []
         for path in (self.project_paths.processed_dir / "live_recalls").glob("*.json"):
             try:
@@ -572,10 +566,9 @@ class ReliabilityService:
         return pd.DataFrame(rows, columns=["marca", "modelo", "ano_fabricacion"])
 
     def real_recalls(self, marca: str, modelo: str, year: int) -> dict[str, Any]:
-        """Fetch official evidence on demand, isolated from all ML/demo labels.
-
-        Daily snapshot folders preserve raw evidence and allow later refreshes
-        without overwriting an earlier response. This is not a VIN lookup.
+        """Consulta evidencia oficial bajo demanda, aislada de etiquetas de aprendizaje y demo.
+        Las carpetas diarias conservan respuestas originales y permiten actualizaciones sin
+        sobrescribirlas. No es una consulta por VIN.
         """
         from .data_sources import DataSourceError, NHTSARecallClient, normalise_nhtsa_response
         from .storage import atomic_json
@@ -617,8 +610,8 @@ class ReliabilityService:
         directory = self.project_paths.processed_dir / "live_recalls"
         directory.mkdir(parents=True, exist_ok=True)
         path = directory / f"{identifier}_{day}.json"
-        # Derived views can be rebuilt after a parser correction. Raw evidence
-        # above is immutable and remains the authoritative original response.
+        # Las vistas derivadas se pueden reconstruir tras corregir el procesamiento.
+        # La evidencia original anterior es inmutable y conserva la respuesta auténtica.
         atomic_json(path, response)
         return response
 
@@ -632,7 +625,7 @@ def _finite_or_none(value: Any) -> float | None:
 
 
 def _as_bool(value: Any) -> bool:
-    """Interpret nullable dataframe flags without triggering pandas NA errors."""
+    """Interpreta indicadores anulables sin provocar errores NA de pandas."""
 
     if value is None or pd.isna(value):
         return False

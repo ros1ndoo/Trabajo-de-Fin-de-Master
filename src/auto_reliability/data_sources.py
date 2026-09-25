@@ -1,9 +1,6 @@
-"""Source ingestion for the US vehicle-reliability data pipeline.
-
-This module deliberately keeps acquisition separate from transformation.  In
-particular, NHTSA responses are cached as their original JSON payloads before
-they are normalised, so a pipeline run is reproducible and does not need to
-re-query a public API merely to re-run a cleaning step.
+"""Ingesta de fuentes de vehículos estadounidenses. Separa adquisición y transformación:
+conserva respuestas NHTSA como JSON originales antes de normalizar, permitiendo repetir la
+limpieza sin volver a consultar la API.
 """
 
 from __future__ import annotations
@@ -34,23 +31,23 @@ from .storage import atomic_json
 
 LOGGER = logging.getLogger(__name__)
 NHTSA_RECALLS_ENDPOINT = "https://api.nhtsa.gov/recalls/recallsByVehicle"
-# NHTSA's recalls discovery endpoint is useful for recall-only exploration,
-# but cannot certify a *zero*-recall vehicle: ``issueType=r`` can omit it.
-# vPIC is a separate official NHTSA make/model/year catalogue and is the
-# authority used to distinguish an API-valid zero from an unverified query.
+# El catálogo de recalls de NHTSA sirve para explorar campañas,
+# pero no certifica vehículos sin recalls: issueType=r puede omitirlos.
+# vPIC es un catálogo oficial independiente de marca, modelo y año;
+# acredita identidad, no cobertura completa ni una etiqueta cero por sí solo.
 NHTSA_RECALL_MODELS_ENDPOINT = "https://api.nhtsa.gov/products/vehicle/models"
 NHTSA_VPIC_MODELS_ENDPOINT = "https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMakeYear"
-# NIST SP 811, Appendix B.9; US mechanical HP and metric horsepower (CV).
+# NIST SP 811, apéndice B.9: HP mecánico estadounidense y caballo métrico (CV).
 HP_TO_CV = 745.6999 / 735.4988
 HP_ALIASES = frozenset({"engine_hp", "engine_horsepower", "horsepower", "hp"})
 
 
 class DataSourceError(RuntimeError):
-    """Raised when an input source cannot satisfy the data contract."""
+    """Indica que una fuente no puede satisfacer el contrato de datos."""
 
 
 class NHTSARequestError(DataSourceError):
-    """Structured request failure; an HTTP error never represents zero recalls."""
+    """Fallo estructurado de consulta: un error HTTP nunca representa cero recalls."""
 
     def __init__(self, message: str, *, status: int | None, attempts: int, retry_after: float | None = None) -> None:
         super().__init__(message)
@@ -61,7 +58,7 @@ class NHTSARequestError(DataSourceError):
 
 
 def retry_after_seconds(value: str | None) -> float | None:
-    """Parse Retry-After delay/date, ignoring malformed or non-finite values."""
+    """Interpreta Retry-After como demora o fecha, ignorando valores malformados o no finitos."""
     if not value:
         return None
     try:
@@ -80,7 +77,7 @@ def retry_after_seconds(value: str | None) -> float | None:
 
 @dataclass(frozen=True)
 class NHTSAFetchResult:
-    """The immutable raw result of one NHTSA vehicle request."""
+    """Resultado original inmutable de una consulta NHTSA de vehículo."""
 
     make: str
     model: str
@@ -93,7 +90,7 @@ class NHTSAFetchResult:
 
     @property
     def result_count(self) -> int:
-        """Return API recall count despite NHTSA's historical field casing."""
+        """Devuelve el conteo de la API tolerando variantes históricas de mayúsculas."""
 
         value = self.payload.get("Count", self.payload.get("count"))
         try:
@@ -105,12 +102,10 @@ class NHTSAFetchResult:
 
 @dataclass
 class NHTSABatchResult:
-    """Normalised records plus the requested vehicle universe.
-
-    ``vehicle_index`` includes vehicles for which NHTSA returned zero recalls.
-    Keeping those rows is essential: a missing NHTSA result is not evidence of
-    an unmatched technical specification, and zero-recall vehicles must remain
-    eligible for the gold layer.
+    """Registros normalizados y universo consultado. vehicle_index conserva respuestas sin
+    campañas; faltar un resultado no demuestra ausencia ni un fallo de cruce técnico. Su
+    elegibilidad para Gold depende de identidad y observación acreditadas, no solo del
+    conteo.
     """
 
     records: pd.DataFrame
@@ -120,7 +115,7 @@ class NHTSABatchResult:
 
 @dataclass(frozen=True)
 class NHTSACatalogFetchResult:
-    """One immutable NHTSA make/model/year catalogue snapshot."""
+    """Instantánea inmutable del catálogo NHTSA de marca, modelo y año."""
 
     make: str
     year: int
@@ -132,7 +127,7 @@ class NHTSACatalogFetchResult:
 
 @dataclass
 class NHTSACatalogBatchResult:
-    """Independent NHTSA model catalogue plus any non-fatal batch failures."""
+    """Catálogo independiente de modelos NHTSA y fallos recuperables del lote."""
 
     vehicles: pd.DataFrame
     failures: list[dict[str, str]] = field(default_factory=list)
@@ -142,9 +137,9 @@ def _normalised_column_name(name: object) -> str:
     return canonical_text(name).replace(" ", "_")
 
 
-# CooperUnion's published file uses e.g. ``Engine HP`` and ``Market Category``.
-# The aliases also make a Spanish-labelled classroom export usable without a
-# one-off preprocessing notebook.
+# El archivo de CooperUnion utiliza nombres como Engine HP y Market Category.
+# Los alias permiten también leer exportaciones con columnas en castellano
+# sin requerir un cuaderno de preprocesamiento específico.
 COOPERUNION_COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
     "marca": ("make", "manufacturer", "brand", "marca", "fabricante"),
     "modelo": ("model", "modelo"),
@@ -171,9 +166,9 @@ COOPERUNION_COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
         "cilindros",
     ),
     "categoria_vehiculo": (
-        # ``Vehicle Style`` is the most direct consumer-facing segment in the
-        # CooperUnion source (e.g. "4dr SUV"), so it wins over the broader,
-        # multi-label Market Category whenever both are present.
+        # Vehicle Style es el segmento más cercano a la carrocería comercial
+        # en CooperUnion (por ejemplo, 4dr SUV); tiene prioridad frente a
+        # Market Category, más amplio y con varias etiquetas, si ambos existen.
         "vehicle_style",
         "estilo_vehiculo",
         "market_category",
@@ -194,7 +189,7 @@ COOPERUNION_COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
 
 
 def _first_non_empty(series: pd.Series) -> object:
-    """Return the first meaningful value from duplicate source aliases."""
+    """Devuelve el primer valor significativo entre alias duplicados de fuente."""
 
     for value in series:
         if pd.notna(value) and str(value).strip():
@@ -203,8 +198,8 @@ def _first_non_empty(series: pd.Series) -> object:
 
 
 def _coalesce_alias_columns(frame: pd.DataFrame, aliases: Sequence[str]) -> pd.Series:
-    # Respect alias priority rather than CSV source-column order.  This is
-    # specifically important for Vehicle Style -> Market Category fallback.
+    # Respetar la prioridad de los alias, no el orden de las columnas del CSV.
+    # Es especialmente importante para el respaldo Vehicle Style -> Market Category.
     existing = [alias for alias in aliases if alias in frame.columns]
     if not existing:
         return pd.Series(pd.NA, index=frame.index, dtype="object")
@@ -214,7 +209,7 @@ def _coalesce_alias_columns(frame: pd.DataFrame, aliases: Sequence[str]) -> pd.S
 
 
 def _normalise_source_text(value: object) -> str | pd._libs.missing.NAType:
-    """Normalise display text without turning missing values into the string 'nan'."""
+    """Normaliza texto visible sin convertir ausencias en la cadena nan."""
 
     if value is None or pd.isna(value):
         return pd.NA
@@ -223,15 +218,11 @@ def _normalise_source_text(value: object) -> str | pd._libs.missing.NAType:
 
 
 def normalise_cooperunion_columns(source: pd.DataFrame) -> pd.DataFrame:
-    """Map a CooperUnion/Kaggle CSV to the project's source-level contract.
-
-    The returned dataframe remains at its original trim/engine-row granularity;
-    :func:`auto_reliability.transform.prepare_technical_specs` performs
-    model-year aggregation later, leaving imputation to train-only estimators.
-    US-labelled HP is interpreted as mechanical horsepower, not metric CV.
-    It is intentionally tolerant
-    of optional technical fields, but rejects a file without make, model, or
-    year because there is no defensible way to repair those keys.
+    """Adapta un CSV CooperUnion/Kaggle al contrato de fuente. Conserva la granularidad
+    original de versión/motor; prepare_technical_specs agrega por modelo-año y los
+    estimadores imputan solo con entrenamiento. Interpreta HP estadounidense como potencia
+    mecánica, no CV métrico. Tolera campos técnicos opcionales, pero rechaza ausencia de
+    marca, modelo o año porque esas claves no admiten reparación justificable.
     """
 
     if source.empty:
@@ -244,8 +235,8 @@ def normalise_cooperunion_columns(source: pd.DataFrame) -> pd.DataFrame:
     for target, aliases in COOPERUNION_COLUMN_ALIASES.items():
         output[target] = _coalesce_alias_columns(frame, aliases)
 
-    # Convert each alias before coalescing: mixed HP/CV exports must not apply
-    # the HP factor to values already supplied in canonical CV.
+    # Convertir cada alias antes de combinarlo: una exportación mixta HP/CV
+    # no debe aplicar el factor HP a valores ya expresados en CV.
     output["potencia_cv"] = float("nan")
     output["potencia_original"] = float("nan")
     output["columna_potencia_origen"] = pd.Series(pd.NA, index=frame.index, dtype="string")
@@ -278,14 +269,14 @@ def normalise_cooperunion_columns(source: pd.DataFrame) -> pd.DataFrame:
     for column in ("potencia_cv", "cilindros", "msrp"):
         output[column] = pd.to_numeric(output[column], errors="coerce")
 
-    # Preserve the original row position for source-to-processed traceability.
+    # Conservar la posición original para trazar cada fila hasta su fuente.
     output.insert(0, "fila_origen", range(len(output)))
     output["fuente_tecnica"] = "cooperunion"
     return output
 
 
-# American / British spellings and a few common source aliases are normalised
-# only for comparisons.  We retain the cleaned original text for the dashboard.
+# Normalizar variantes americanas/británicas y alias habituales solo
+# al comparar. La interfaz conserva el texto original limpio.
 MAKE_ALIASES: dict[str, str] = {
     "vw": "volkswagen",
     "volkswagen": "volkswagen",
@@ -296,18 +287,18 @@ MAKE_ALIASES: dict[str, str] = {
 
 
 def comparison_make(value: object) -> str:
-    """Return a conservative, stable make key used for joins."""
+    """Devuelve una clave conservadora y estable de marca para cruces."""
 
     key = canonical_text(value)
     return MAKE_ALIASES.get(key, key)
 
 
 def comparison_model(value: object) -> str:
-    """Return a punctuation-insensitive model key used by fuzzy matching."""
+    """Devuelve una clave de modelo insensible a puntuación para cruce difuso."""
 
     key = canonical_text(value)
-    # Cosmetic separators in alphanumeric model names do not change family:
-    # F-150 == F150, CX-5 == CX5. The numbers themselves remain significant.
+    # Los separadores cosméticos no cambian la familia alfanumérica:
+    # F-150 == F150, CX-5 == CX5. Los números siguen siendo significativos.
     return re.sub(r"(?<=[a-z])\s+(?=\d)|(?<=\d)\s+(?=[a-z])", "", key)
 
 
@@ -317,11 +308,9 @@ def ingest_cooperunion_csv(
     min_year: int = MIN_MODEL_YEAR,
     encoding: str | None = None,
 ) -> pd.DataFrame:
-    """Read and minimally validate a CooperUnion ``Car Features and MSRP`` CSV.
-
-    Source files are read only.  Rows with invalid keys or years before the
-    documented 1995 boundary are excluded here and reported through dataframe
-    attributes, allowing callers to persist an explicit quality report.
+    """Lee y valida mínimamente Car Features and MSRP de CooperUnion. Las fuentes son de solo
+    lectura. Excluye claves inválidas y años anteriores a 1995, informándolos en atributos
+    del dataframe para conservar un informe de calidad explícito.
     """
 
     path = Path(csv_path)
@@ -331,8 +320,8 @@ def ingest_cooperunion_csv(
     try:
         source = pd.read_csv(path, encoding=encoding)
     except UnicodeDecodeError:
-        # Kaggle exports are normally UTF-8, but latin-1 is a safe read-only
-        # fallback for local classroom copies.
+        # Las exportaciones de Kaggle suelen usar UTF-8; latin-1 permite leer
+        # copias locales alternativas sin modificar el archivo original.
         source = pd.read_csv(path, encoding="latin-1")
 
     frame = normalise_cooperunion_columns(source)
@@ -356,21 +345,21 @@ def ingest_cooperunion_csv(
 
 
 def _safe_filename_part(value: object) -> str:
-    """Make a readable, filesystem-safe filename component."""
+    """Crea un componente de nombre de archivo legible y seguro."""
 
     value = canonical_text(value).replace(" ", "_")
     return re.sub(r"[^a-z0-9_]+", "", value) or "unknown"
 
 
 def _query_digest(*parts: object) -> str:
-    """Prevent slug collisions without placing untrusted query text in paths."""
+    """Evita colisiones de nombres sin introducir texto no confiable en rutas."""
 
     source = "\x1f".join(str(part).strip().casefold() for part in parts)
     return hashlib.sha256(source.encode("utf-8")).hexdigest()[:12]
 
 
 def nhtsa_cache_filename(make: object, model: object, year: int) -> str:
-    """Return a safe, collision-resistant raw-cache filename for a vehicle query."""
+    """Devuelve un nombre de caché original seguro y resistente a colisiones para una consulta."""
 
     return (
         f"nhtsa_recalls_{_safe_filename_part(make)}_{_safe_filename_part(model)}_"
@@ -379,7 +368,7 @@ def nhtsa_cache_filename(make: object, model: object, year: int) -> str:
 
 
 def nhtsa_catalog_cache_filename(make: object, year: int, *, source: str = "vpic") -> str:
-    """Return a safe immutable filename for one NHTSA catalogue response."""
+    """Devuelve un nombre inmutable seguro para una respuesta de catálogo NHTSA."""
 
     clean_source = _safe_filename_part(source)
     return (
@@ -389,11 +378,9 @@ def nhtsa_catalog_cache_filename(make: object, year: int, *, source: str = "vpic
 
 
 class NHTSARecallClient:
-    """Rate-limited and cache-first client for the public NHTSA recalls API.
-
-    A client is injectable with a ``requests.Session``-compatible object and a
-    sleeper, making retry behaviour deterministic in unit tests.  Cached JSON
-    is never overwritten: raw input is treated as immutable evidence.
+    """Cliente de la API NHTSA con limitación de solicitudes y prioridad de caché. Permite
+    inyectar una sesión compatible con requests.Session y una función de espera para probar
+    reintentos deterministas. Nunca sobrescribe JSON originales: son evidencia inmutable.
     """
 
     def __init__(
@@ -433,7 +420,7 @@ class NHTSARecallClient:
         return self.raw_dir / nhtsa_cache_filename(make, model, year)
 
     def catalog_cache_path_for(self, make: object, year: int, *, source: str = "vpic") -> Path:
-        """Return the immutable snapshot location for one catalogue request."""
+        """Devuelve la ubicación inmutable de una solicitud de catálogo."""
 
         return self.raw_dir / nhtsa_catalog_cache_filename(make, year, source=source)
 
@@ -452,7 +439,7 @@ class NHTSARecallClient:
 
     @staticmethod
     def _write_json_once(path: Path, payload: Mapping[str, Any]) -> None:
-        """Atomically create a raw JSON file while preserving existing evidence."""
+        """Crea JSON original atómicamente, conservando evidencia existente."""
 
         atomic_json(path, payload, immutable=True)
 
@@ -463,7 +450,7 @@ class NHTSARecallClient:
         params: Mapping[str, object] | None,
         request_label: str,
     ) -> dict[str, Any]:
-        """GET JSON with bounded exponential backoff for NHTSA rate limits."""
+        """Consulta JSON por GET con reintentos exponenciales acotados ante límites NHTSA."""
 
         last_error: Exception | None = None
         response_status: int | None = None
@@ -491,8 +478,8 @@ class NHTSARecallClient:
                 return payload
             except (requests.RequestException, ValueError, DataSourceError) as exc:
                 last_error = exc
-                # Invalid/unknown vehicle queries are permanent errors. Retry
-                # only connectivity and transient/rate-limit responses.
+                # Las consultas inválidas o desconocidas son errores permanentes. Reintentar
+                # solo fallos de conexión y respuestas transitorias o de límite de solicitudes.
                 response_status = getattr(getattr(exc, "response", None), "status_code", None)
                 if response_status is None and response is not None:
                     response_status = getattr(response, "status_code", None)
@@ -500,8 +487,8 @@ class NHTSARecallClient:
                     break
                 if attempt >= self.max_retries:
                     break
-                # Respect long server cooldowns by failing recoverably, not by
-                # retrying early or blocking an interactive session indefinitely.
+                # Respetar esperas largas del servidor devolviendo un error recuperable,
+                # sin reintentar antes de tiempo ni bloquear indefinidamente la sesión.
                 if retry_after is not None and retry_after > 30:
                     break
                 delay = max(retry_after or 0., self.base_backoff_seconds * (2**attempt))
@@ -527,7 +514,7 @@ class NHTSARecallClient:
         self, cache_path: Path, endpoint: str, *, params: Mapping[str, object] | None,
         request_label: str,
     ) -> tuple[dict[str, Any], bool]:
-        """Convert lock/storage failures to recoverable source errors."""
+        """Convierte fallos de bloqueo o almacenamiento en errores recuperables de fuente."""
         try:
             return self._fetch_cached_json_locked(cache_path, endpoint, params=params, request_label=request_label)
         except (Timeout, sqlite3.Error, OSError) as exc:
@@ -542,8 +529,8 @@ class NHTSARecallClient:
         request_label: str,
     ) -> tuple[dict[str, Any], bool]:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
-        # Locks are OS-backed and released on process death. Recheck the cache
-        # after acquisition so simultaneous sessions make only one request.
+        # El sistema operativo libera los bloqueos al terminar el proceso. Revisar
+        # la caché tras adquirir el bloqueo evita solicitudes simultáneas duplicadas.
         with FileLock(str(cache_path) + ".lock", timeout=30):
             if cache_path.exists():
                 payload = self._read_cache(cache_path)
@@ -561,7 +548,7 @@ class NHTSARecallClient:
                     payload = self._request_json(endpoint, params=params, request_label=request_label)
                     _payload_results(payload)
                 except NHTSARequestError as exc:
-                    # A timeout for one vehicle is not proof of host throttling.
+                    # Un tiempo de espera agotado no demuestra limitación de peticiones del servidor.
                     delay = (max(exc.retry_after or 0., self.base_backoff_seconds)
                              if exc.transient and (exc.retry_after is not None or exc.status in {429, 503}) else 0.)
                     self.request_state.record(endpoint, params, now=self.clock(),
@@ -578,7 +565,7 @@ class NHTSARecallClient:
             return payload, False
 
     def fetch_vehicle(self, make: object, model: object, year: int) -> NHTSAFetchResult:
-        """Fetch one vehicle's raw recalls response, preferring immutable cache."""
+        """Obtiene la respuesta original de recalls priorizando la caché inmutable."""
 
         make_text, model_text, model_year = str(make).strip(), str(model).strip(), int(year)
         if not make_text or not model_text:
@@ -604,11 +591,9 @@ class NHTSARecallClient:
         )
 
     def fetch_vpic_models_for_make_year(self, make: object, year: int) -> NHTSACatalogFetchResult:
-        """Fetch an independent NHTSA vPIC vehicle catalogue snapshot.
-
-        vPIC lists NHTSA vehicle make/model/year entries irrespective of whether
-        the model currently has a recall. Presence establishes identity evidence,
-        not equivalence with recall-service names or proof of a zero label.
+        """Obtiene una instantánea independiente de vPIC. Enumera marcas/modelos/años sin
+        depender de campañas actuales; su presencia aporta identidad, no equivalencia de
+        nombres con el servicio de recalls ni prueba de cero.
         """
 
         make_text, model_year = str(make).strip(), int(year)
@@ -634,11 +619,9 @@ class NHTSARecallClient:
         )
 
     def fetch_recall_models_for_make_year(self, make: object, year: int) -> NHTSACatalogFetchResult:
-        """Fetch NHTSA's official recall-model discovery response.
-
-        This endpoint is useful for discovering model spellings associated with
-        recall issues.  It must not be used as proof that an absent vehicle has
-        zero recalls. vPIC supplies separate identity evidence, not zero labels.
+        """Obtiene nombres oficiales del catálogo de recalls. Sirve para descubrir
+        nomenclaturas asociadas a campañas, no para probar ausencia de recalls en vehículos
+        omitidos. vPIC aporta identidad por separado, no etiquetas cero.
         """
 
         make_text, model_year = str(make).strip(), int(year)
@@ -660,7 +643,7 @@ class NHTSARecallClient:
             source="recall_catalog",
         )
 
-    # A readable alias for notebooks and earlier documentation drafts.
+    # Alias legible para cuadernos y documentación anterior.
     fetch_recalls = fetch_vehicle
 
     def fetch_independent_vehicle_catalog(
@@ -669,20 +652,18 @@ class NHTSARecallClient:
         *,
         continue_on_error: bool = True,
     ) -> NHTSACatalogBatchResult:
-        """Build independent recall-product and vPIC make/model/year catalogues.
-
-        Only one catalogue request is made per make/year rather than per
-        technical trim.  The result is both bounded and resumable because each
-        original vPIC JSON response is cached in ``data/raw`` once.
+        """Construye catálogos independientes de productos de recalls y vPIC. Consulta una vez
+        por marca/año, no por versión técnica; el proceso es acotado y reanudable al
+        conservar cada JSON original una vez en data/raw.
         """
 
         make_year_queries = _normalise_make_year_queries(vehicles)
         catalog_frames: list[pd.DataFrame] = []
         failures: list[dict[str, str]] = []
         for position, query in enumerate(make_year_queries):
-            # Recall discovery supplies the actual names expected by the recall
-            # endpoint. vPIC supplements vehicles outside that namespace, but a
-            # vPIC-only zero response is kept uncertain, never used as a label.
+            # El catálogo de recalls aporta los nombres que espera su servicio.
+            # vPIC complementa identidades fuera de ese catálogo; una respuesta vacía
+            # basada solo en vPIC sigue siendo incierta y nunca genera una etiqueta.
             for fetcher in (self.fetch_recall_models_for_make_year, self.fetch_vpic_models_for_make_year):
                 try:
                     snapshot = fetcher(query["marca"], int(query["ano_fabricacion"]))
@@ -717,13 +698,13 @@ class NHTSARecallClient:
             else empty_nhtsa_catalog_frame()
         )
         if not catalog.empty:
-            # Equivalent model spellings always prefer the recalls namespace.
+            # Ante nombres equivalentes, priorizar la nomenclatura del catálogo de recalls.
             catalog = catalog.drop_duplicates(
                 ["marca_normalizada", "modelo_normalizado", "ano_fabricacion"], keep="first"
             ).reset_index(drop=True)
         return NHTSACatalogBatchResult(catalog, failures)
 
-    # Shorter, discoverable alias for service and notebook callers.
+    # Alias breve para llamadas desde el servicio y los cuadernos.
     fetch_vehicle_catalog = fetch_independent_vehicle_catalog
 
     def fetch_catalog_verified_recalls(
@@ -732,13 +713,10 @@ class NHTSARecallClient:
         *,
         continue_on_error: bool = True,
     ) -> NHTSABatchResult:
-        """Fetch recalls only for independently catalogue-verified vehicles.
-
-        A zero-result recall response is labelled ``valid_zero_recalls`` only
-        when independently present in the recalls product namespace. Presence
-        in vPIC alone does not establish equivalence with recall model names.
-        This prevents a misspelled direct query from being promoted to a false
-        zero-recall label.
+        """Consulta campañas de vehículos verificados en un catálogo independiente. Solo
+        etiqueta valid_zero_recalls si también existe la identidad en la nomenclatura de
+        productos de recalls. vPIC por sí solo no acredita esa equivalencia; así se evita
+        convertir nombres mal escritos en falsos ceros.
         """
 
         queries = _normalise_catalog_vehicle_queries(catalog_vehicles)
@@ -804,10 +782,9 @@ class NHTSARecallClient:
         *,
         continue_on_error: bool = True,
     ) -> NHTSABatchResult:
-        """Fetch unique vehicle queries sequentially with a respectful delay.
-
-        Sequential batches are intentional: the public service is rate-limited,
-        and immutable caching makes subsequent runs fast without concurrency.
+        """Consulta vehículos únicos secuencialmente con una pausa respetuosa. La secuencia
+        limita solicitudes al servicio público y la caché inmutable acelera ejecuciones
+        posteriores sin concurrencia.
         """
 
         queries = _normalise_vehicle_queries(vehicles)
@@ -839,15 +816,15 @@ class NHTSARecallClient:
                         "numero_recalls_api": len(normalised),
                         "cache_path": str(result.cache_path),
                         "desde_cache": result.from_cache,
-                        # Direct calls are convenient for exploratory work but
-                        # a Count=0 cannot distinguish typo from true absence.
+                        # Las consultas directas son útiles para explorar, pero Count=0
+                        # no distingue un error en el nombre de una ausencia real de campañas.
                         "catalog_verified": False,
                         "catalog_source": pd.NA,
                         "query_status": "unverified_with_recalls" if result.result_count else "unverified_zero_result",
                         "resultado_cero_validado": False,
                     }
                 )
-            except Exception as exc:  # keep a long batch usable after one bad query
+            except Exception as exc:  # conservar el lote tras una consulta fallida
                 failure = {
                     "marca": str(query["marca"]),
                     "modelo": str(query["modelo"]),
@@ -871,7 +848,7 @@ class NHTSARecallClient:
 def _normalise_vehicle_queries(
     vehicles: pd.DataFrame | Iterable[Mapping[str, object] | Sequence[object]],
 ) -> list[dict[str, object]]:
-    """Coerce supported batch input shapes to a de-duplicated query list."""
+    """Convierte formatos de entrada admitidos en consultas sin duplicados."""
 
     if isinstance(vehicles, pd.DataFrame):
         make_col = "marca" if "marca" in vehicles.columns else "make"
@@ -909,7 +886,7 @@ def _normalise_vehicle_queries(
 def _normalise_make_year_queries(
     vehicles: pd.DataFrame | Iterable[Mapping[str, object] | Sequence[object]],
 ) -> list[dict[str, object]]:
-    """Extract unique make/year pairs from technical rows or loose mappings."""
+    """Extrae pares únicos marca/año de filas técnicas o diccionarios."""
 
     if isinstance(vehicles, pd.DataFrame):
         make_col = "marca" if "marca" in vehicles.columns else "make"
@@ -927,8 +904,8 @@ def _normalise_make_year_queries(
             year = item.get("ano_fabricacion", item.get("year"))
         else:
             try:
-                # Accept either the natural (make, year) form or the
-                # (make, model, year) form used by direct recall batches.
+                # Aceptar tanto la clave natural (marca, año) como
+                # (marca, modelo, año), utilizada en los lotes de consultas directas.
                 make, year = item[0], item[-1]  # type: ignore[index]
             except (TypeError, ValueError) as exc:
                 raise ValueError("Each catalogue query must provide (make, year).") from exc
@@ -945,7 +922,7 @@ def _normalise_make_year_queries(
 def _normalise_catalog_vehicle_queries(
     vehicles: pd.DataFrame | Iterable[Mapping[str, object]],
 ) -> list[dict[str, object]]:
-    """Coerce independent catalogue rows (or accepted matches) to recall queries."""
+    """Convierte filas del catálogo independiente o cruces aceptados en consultas de recalls."""
 
     if isinstance(vehicles, pd.DataFrame):
         make_col = "marca_nhtsa" if "marca_nhtsa" in vehicles.columns else ("marca" if "marca" in vehicles.columns else "make")
@@ -967,7 +944,7 @@ def _normalise_catalog_vehicle_queries(
             raise TypeError("Verified recall queries must be mappings or a dataframe.")
         if record.get("catalog_verified") is not True:
             raise ValueError("Verified recall queries require explicit independent catalog_verified=True.")
-        # Dataframe records can have alternate accepted-match column names.
+        # Los registros pueden utilizar nombres alternativos de columnas de cruce aceptado.
         make = record.get(make_col, record.get("marca_nhtsa", record.get("marca", record.get("make"))))
         model = record.get(model_col, record.get("modelo_nhtsa", record.get("modelo", record.get("model"))))
         year = record.get(year_col, record.get("ano_fabricacion", record.get("year")))
@@ -1041,13 +1018,13 @@ NHTSA_CATALOG_COLUMNS: tuple[str, ...] = (
 
 
 def empty_nhtsa_records_frame() -> pd.DataFrame:
-    """Return an empty NHTSA dataframe with its stable downstream schema."""
+    """Devuelve un dataframe NHTSA vacío con esquema estable."""
 
     return pd.DataFrame(columns=NHTSA_RECORD_COLUMNS)
 
 
 def empty_nhtsa_catalog_frame() -> pd.DataFrame:
-    """Return the stable schema for an empty independent vehicle catalogue."""
+    """Devuelve el esquema estable de un catálogo independiente vacío."""
 
     return pd.DataFrame(columns=NHTSA_CATALOG_COLUMNS)
 
@@ -1073,7 +1050,7 @@ def _result_value(result: Mapping[str, Any], *names: str) -> object:
     for name in names:
         if name in result and result[name] is not None:
             return result[name]
-        # Be tolerant of API casing changes without spelling out every variant.
+        # Tolerar cambios de mayúsculas de la API sin enumerar todas las variantes.
         lowered = {str(key).lower(): value for key, value in result.items()}
         value = lowered.get(name.lower())
         if value is not None:
@@ -1090,12 +1067,10 @@ def normalise_nhtsa_catalog_response(
     cache_path: str | Path | None = None,
     from_cache: bool = False,
 ) -> pd.DataFrame:
-    """Normalise an official NHTSA model catalogue to matching candidates.
-
-    ``vpic`` records use ``Make_Name`` / ``Model_Name`` whereas the recalls
-    discovery API uses lower-case ``make`` / ``model``.  Both are handled, but
-    callers should use vPIC for validity because recall-only discovery can omit
-    genuine zero-recall vehicles.
+    """Normaliza catálogos oficiales a candidatos de cruce. vPIC usa Make_Name/Model_Name; el
+    descubrimiento de recalls usa make/model. Se admiten ambos. vPIC aporta identidad
+    independiente porque el catálogo de campañas puede omitir vehículos sin recalls; por sí
+    solo no acredita una etiqueta cero.
     """
 
     if not isinstance(payload, Mapping):
@@ -1112,8 +1087,8 @@ def normalise_nhtsa_catalog_response(
             continue
         numeric_year = pd.to_numeric(result_year, errors="coerce")
         model_year = default_year if pd.isna(numeric_year) else int(numeric_year)
-        # The request itself is make/year scoped.  Do not admit a malformed API
-        # record that reports a different year into the independent catalogue.
+        # La solicitud está delimitada por marca y año. No incorporar al catálogo
+        # independiente una respuesta malformada que indique otro año.
         if model_year != default_year or comparison_make(make_text) != comparison_make(default_make):
             continue
         rows.append(
@@ -1143,7 +1118,7 @@ def normalise_nhtsa_response(
     year: int,
     nhtsa_vehicle_id: str | None = None,
 ) -> pd.DataFrame:
-    """Convert a raw NHTSA response into one canonical row per campaign."""
+    """Convierte una respuesta NHTSA original en una fila canónica por campaña."""
 
     if not isinstance(payload, Mapping):
         raise DataSourceError("NHTSA payload must be a JSON object.")
@@ -1190,10 +1165,10 @@ def normalise_nhtsa_response(
     if not rows:
         return empty_nhtsa_records_frame()
     frame = pd.DataFrame(rows, columns=NHTSA_RECORD_COLUMNS)
-    # The live NHTSA recalls service exports ReportReceivedDate as DD/MM/YYYY
-    # (e.g. campaign 19V859000: ``04/12/2019`` is 4 December).  Parse that
-    # explicitly before accepting ISO or legacy variants; pandas' default can
-    # otherwise silently turn it into 12 April.
+    # El servicio NHTSA publica ReportReceivedDate como DD/MM/YYYY
+    # (campaña 19V859000: 04/12/2019 corresponde al 4 de diciembre).
+    # Interpretar ese formato antes que ISO o variantes antiguas; pandas
+    # podría convertirlo silenciosamente en el 12 de abril.
     raw_dates = frame["fecha_reporte"]
     parsed_dates = pd.to_datetime(raw_dates, format="%d/%m/%Y", errors="coerce")
     unresolved = parsed_dates.isna() & raw_dates.notna()
@@ -1202,7 +1177,7 @@ def normalise_nhtsa_response(
             parsed_dates.loc[unresolved] = pd.to_datetime(
                 raw_dates.loc[unresolved], format="mixed", errors="coerce"
             )
-        except (TypeError, ValueError):  # pandas versions before format='mixed'
+        except (TypeError, ValueError):  # versiones de pandas anteriores a format='mixed'
             parsed_dates.loc[unresolved] = pd.to_datetime(raw_dates.loc[unresolved], errors="coerce")
     frame["fecha_reporte"] = parsed_dates
     return frame

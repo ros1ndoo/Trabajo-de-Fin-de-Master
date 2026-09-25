@@ -1,8 +1,6 @@
-"""End-to-end, auditable Raw -> Processed -> Gold orchestration.
-
-This module intentionally has no hidden downloads. A caller supplies the
-licensed/public CooperUnion CSV, and the NHTSA client persists every response
-once in the immutable Raw layer before any transformation happens.
+"""Orquestación auditable Raw -> Processed -> Gold. No hay descargas ocultas: se proporciona el
+CSV CooperUnion público o licenciado; el cliente NHTSA conserva cada respuesta original una
+vez antes de transformar.
 """
 
 from __future__ import annotations
@@ -50,7 +48,7 @@ from .transform import (
 
 @dataclass
 class PipelineResult:
-    """Inspectable output of one pipeline run, including non-fatal warnings."""
+    """Salida inspeccionable de una ejecución, con advertencias recuperables."""
 
     technical: pd.DataFrame
     nhtsa_catalog: pd.DataFrame
@@ -67,7 +65,7 @@ class PipelineResult:
 
     @property
     def contingency_recommended(self) -> bool:
-        """Expose the documented >40% matching-loss warning."""
+        """Expone la advertencia documentada de pérdida de cruce superior al 40%."""
 
         return self.match_summary.contingency_recommended
 
@@ -79,12 +77,10 @@ def select_technical_scope(
     model_years: Sequence[int] | None = None,
     max_vehicles: int | None = None,
 ) -> pd.DataFrame:
-    """Select a reproducible, temporally broad real-data integration scope.
-
-    A bounded run is a safety feature for public APIs.  Unlike ``head(n)``,
-    the selector round-robins chronological model-year strata, so a 120-row
-    smoke test preserves historical breadth instead of accidentally querying a
-    single alphabetically early make or year.
+    """Selecciona un ámbito real reproducible y temporalmente amplio. Limitar una ejecución
+    protege la API pública. A diferencia de head(n), recorre estratos cronológicos de
+    modelo-año por turnos; una prueba de 120 filas no queda limitada a la primera marca o
+    año alfabéticos.
     """
 
     required = {"marca", "modelo", "ano_fabricacion"}
@@ -140,11 +136,9 @@ def stage_technical_csv(
     *,
     filename: str = "cooperunion_car_features.csv",
 ) -> Path:
-    """Copy the supplied source to Raw exactly once, without overwriting it.
-
-    Raw is an evidence layer. If a file with the target name already exists
-    and differs from the supplied CSV, the caller must choose a distinct name
-    or explicitly manage the raw inputs; this function never replaces it.
+    """Copia la fuente una sola vez a Raw sin sobrescribirla. Si el nombre existe con bytes
+    diferentes, se exige otro nombre o gestión explícita de fuentes; esta función nunca lo
+    reemplaza.
     """
 
     source = Path(source_csv).expanduser().resolve()
@@ -184,11 +178,9 @@ def run_pipeline(
     snapshot_date: date | str | None = None,
     recall_source: str = "api",
 ) -> PipelineResult:
-    """Run the official pipeline and persist all writable layer artefacts.
-
-    ``max_vehicles`` is deliberately provided for a safe smoke test. Omit it
-    for a full historic execution; NHTSA queries will be rate-limited and raw
-    JSON responses are cache-first on later runs.
+    """Ejecuta la ingesta oficial y guarda artefactos de capas modificables. max_vehicles sirve
+    para pruebas acotadas; omitirlo procesa todo el histórico. Las consultas NHTSA respetan
+    límites y priorizan la caché JSON en repeticiones.
     """
 
     project_paths = paths or ProjectPaths.discover()
@@ -246,8 +238,8 @@ def run_pipeline(
         return_normalizer=True,
         observation_index=batch.vehicle_index,
     )
-    # This catalog intentionally includes historic and recent technical rows.
-    # Only Gold contains the selected vehicle's recall-derived label.
+    # Este catálogo incluye deliberadamente filas técnicas históricas y recientes.
+    # Solo Gold contiene la etiqueta del vehículo seleccionado derivada de recalls.
     inference_catalog = build_inference_catalog(
         full_technical,
         gold,
@@ -350,10 +342,9 @@ def run_pipeline(
 
 
 def refresh_inference_catalog(technical_csv: str | Path, *, paths: ProjectPaths | None = None) -> pd.DataFrame:
-    """Expose ALL technical makes/models, regardless of an API sampling limit.
-
-    This operation is offline: missing recall evidence stays explicitly
-    unknown. It never downloads, creates labels, or silently retrains a model.
+    """Expone TODAS las marcas/modelos técnicos independientemente del límite de consultas. Es
+    una operación local: evidencia ausente permanece desconocida; no descarga, crea
+    etiquetas ni reentrena silenciosamente.
     """
     project_paths = paths or ProjectPaths.discover()
     technical = prepare_technical_specs(ingest_cooperunion_csv(technical_csv))
@@ -375,7 +366,7 @@ def refresh_inference_catalog(technical_csv: str | Path, *, paths: ProjectPaths 
     catalog["fuente_demo"] = False
     project_paths.ensure_runtime_directories()
     catalog.to_parquet(project_paths.inference_catalog_path, index=False)
-    # Keep this derived SQLite view aligned with the GUI catalogue as well.
+    # Mantener también esta vista derivada de SQLite alineada con el catálogo de la interfaz.
     import sqlite3
 
     from .transform import _sqlite_value

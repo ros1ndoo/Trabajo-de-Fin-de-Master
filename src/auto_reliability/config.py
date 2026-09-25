@@ -1,4 +1,4 @@
-"""Central, side-effect-free paths and constants for the project."""
+"""Rutas y constantes centrales sin efectos secundarios."""
 
 from __future__ import annotations
 
@@ -9,18 +9,16 @@ from pathlib import Path
 
 
 def repository_root() -> Path:
-    """Return the repository root when installed editable or run from source."""
+    """Devuelve la raíz del repositorio en instalaciones editables o desde el código fuente."""
 
     return Path(__file__).resolve().parents[2]
 
 
 @dataclass(frozen=True)
 class ProjectPaths:
-    """Filesystem contract shared by ingestion, training and the dashboard.
-
-    Calling :meth:`ensure_runtime_directories` only creates missing writable
-    directories. It never clears raw, processed, gold, documentation, or
-    source files.
+    """Contrato de archivos compartido por ingesta, entrenamiento e interfaz.
+    ensure_runtime_directories solo crea directorios de escritura ausentes; nunca vacía
+    fuentes, procesados, Gold, documentación ni código.
     """
 
     root: Path
@@ -97,7 +95,7 @@ CURRENT_YEAR = datetime.now(timezone.utc).year
 MIN_MODEL_YEAR = 1995
 OBSERVATION_WINDOW_YEARS = 3
 
-# The documentation establishes this exact severity contract.
+# La documentación establece este contrato exacto de severidad.
 RECALL_SEVERITY_WEIGHTS: dict[str, float] = {
     "critical": 3.0,
     "moderate": 1.5,

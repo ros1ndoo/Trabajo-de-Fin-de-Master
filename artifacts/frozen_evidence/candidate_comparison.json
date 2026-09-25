@@ -1,0 +1,322 @@
+{
+  "added_ids": [
+    "FORD_GT_2005",
+    "FORD_GT_2006",
+    "MASERATI_COUPE_2004"
+  ],
+  "candidate_gold_rows": 1359,
+  "candidate_metrics": {
+    "candidates": {
+      "baseline": {
+        "available": true,
+        "error": null,
+        "validation": {
+          "mae": 10.5771,
+          "n": 90,
+          "rmse": 13.7543
+        }
+      },
+      "random_forest": {
+        "available": true,
+        "error": null,
+        "validation": {
+          "mae": 10.8236,
+          "n": 90,
+          "rmse": 13.5027
+        }
+      },
+      "ridge": {
+        "available": true,
+        "error": null,
+        "validation": {
+          "mae": 10.9386,
+          "n": 90,
+          "rmse": 13.4978
+        }
+      }
+    },
+    "dataset_fingerprint": "cd4ba765b6a3a391e4870c2e13a2f009aa9fe0d69593471d0feda973ed674367",
+    "excluded_feature": "score_recalls_bruto (outcome leakage prevention)",
+    "features": [
+      "marca",
+      "categoria_vehiculo",
+      "mediana_cilindros",
+      "mediana_cv",
+      "hist_fiabilidad_marca"
+    ],
+    "final_test": {
+      "mae": 12.1537,
+      "n": 819,
+      "rmse": 16.9991
+    },
+    "fuente_demo": false,
+    "generated_at": "2026-09-25T13:35:46+00:00",
+    "rows_dropped_invalid_target_or_year": 0,
+    "selection": {
+      "advanced_improvement_threshold_pct": 10.0,
+      "advanced_reduction_vs_ridge_pct": 1.0513,
+      "reason": "El baseline obtiene el menor MAE entre los candidatos elegibles. Random Forest no cumple el umbral de mejora exigido frente a Ridge.",
+      "rule": "Random Forest is selected only when validation MAE improves on Ridge by > threshold.",
+      "selected_model": "baseline"
+    },
+    "split": {
+      "configured_train_end_year": 2007,
+      "configured_validation_end_year": 2011,
+      "label_maturity_years": 3,
+      "rows_embargoed_before_test": 88,
+      "rows_embargoed_before_validation": 75,
+      "strategy": "documented_fixed_years_label_maturity_embargo",
+      "test": {
+        "max_year": 2017,
+        "min_year": 2012,
+        "rows": 819
+      },
+      "train": {
+        "max_year": 2005,
+        "min_year": 1995,
+        "rows": 287
+      },
+      "validation": {
+        "max_year": 2009,
+        "min_year": 2008,
+        "rows": 90
+      }
+    },
+    "target": "indice_fiabilidad_100",
+    "target_normalizer": {
+      "formula": "clip(50 - 10 * ((raw_recall_score - mean_train_segment) / std_train_segment), 0, 100)",
+      "global_mean": 2.5801393728222997,
+      "global_std": 2.905393755166635,
+      "observation_window_years": 3,
+      "raw_score_column": "score_recalls_bruto",
+      "segment_statistics": {
+        "2dr hatchback": {
+          "mean": 1.0769230769230769,
+          "std": 1.1409536133993328
+        },
+        "2dr suv": {
+          "mean": 2.3125,
+          "std": 1.9029171684547912
+        },
+        "4dr hatchback": {
+          "mean": 1.1875,
+          "std": 1.3448396744593758
+        },
+        "4dr suv": {
+          "mean": 2.891891891891892,
+          "std": 3.6652774223661755
+        },
+        "cargo van": {
+          "mean": 0.3333333333333333,
+          "std": 0.4714045207910317
+        },
+        "convertible": {
+          "mean": 2.65625,
+          "std": 2.111861959859119
+        },
+        "coupe": {
+          "mean": 1.3372093023255813,
+          "std": 1.6164881912564675
+        },
+        "crew cab pickup": {
+          "mean": 1.125,
+          "std": 1.243734296383275
+        },
+        "extended cab pickup": {
+          "mean": 3.0,
+          "std": 5.022173057773121
+        },
+        "passenger minivan": {
+          "mean": 2.864864864864865,
+          "std": 2.0718468346050147
+        },
+        "passenger van": {
+          "mean": 6.6,
+          "std": 4.810405388322278
+        },
+        "sedan": {
+          "mean": 3.154639175257732,
+          "std": 3.0429577519437867
+        },
+        "wagon": {
+          "mean": 2.0,
+          "std": 1.5118578920369088
+        }
+      },
+      "semantics": "100 indicates lower estimated propensity to NHTSA safety recalls, not general mechanical reliability.",
+      "train_end_year": 2005
+    },
+    "target_scale": "0-100 (100 = menor propensión histórica estimada a recalls)",
+    "warnings": []
+  },
+  "previous_gold_rows": 1361,
+  "previous_metrics": {
+    "candidates": {
+      "baseline": {
+        "available": true,
+        "error": null,
+        "validation": {
+          "mae": 10.7412,
+          "n": 90,
+          "rmse": 14.0394
+        }
+      },
+      "random_forest": {
+        "available": true,
+        "error": null,
+        "validation": {
+          "mae": 10.746,
+          "n": 90,
+          "rmse": 13.3846
+        }
+      },
+      "ridge": {
+        "available": true,
+        "error": null,
+        "validation": {
+          "mae": 11.3099,
+          "n": 90,
+          "rmse": 13.8987
+        }
+      }
+    },
+    "dataset_fingerprint": "9fff9b7308f3a581dcb02daa29dd1a0a605ca2bb80900595062d6c051fd169e6",
+    "excluded_feature": "score_recalls_bruto (outcome leakage prevention)",
+    "features": [
+      "marca",
+      "categoria_vehiculo",
+      "mediana_cilindros",
+      "mediana_cv",
+      "hist_fiabilidad_marca"
+    ],
+    "final_test": {
+      "mae": 12.1984,
+      "n": 819,
+      "rmse": 17.0354
+    },
+    "fuente_demo": false,
+    "generated_at": "2026-09-18T20:56:35+00:00",
+    "rows_dropped_invalid_target_or_year": 0,
+    "selection": {
+      "advanced_improvement_threshold_pct": 10.0,
+      "advanced_reduction_vs_ridge_pct": 4.9859,
+      "reason": "El baseline obtiene el menor MAE entre los candidatos elegibles. Random Forest no cumple el umbral de mejora exigido frente a Ridge.",
+      "rule": "Random Forest is selected only when validation MAE improves on Ridge by > threshold.",
+      "selected_model": "baseline"
+    },
+    "split": {
+      "configured_train_end_year": 2007,
+      "configured_validation_end_year": 2011,
+      "label_maturity_years": 3,
+      "rows_embargoed_before_test": 88,
+      "rows_embargoed_before_validation": 74,
+      "strategy": "documented_fixed_years_label_maturity_embargo",
+      "test": {
+        "max_year": 2017,
+        "min_year": 2012,
+        "rows": 819
+      },
+      "train": {
+        "max_year": 2005,
+        "min_year": 1995,
+        "rows": 290
+      },
+      "validation": {
+        "max_year": 2009,
+        "min_year": 2008,
+        "rows": 90
+      }
+    },
+    "target": "indice_fiabilidad_100",
+    "target_normalizer": {
+      "formula": "clip(50 - 10 * ((raw_recall_score - mean_train_segment) / std_train_segment), 0, 100)",
+      "global_mean": 2.532758620689655,
+      "global_std": 2.8988337685348737,
+      "observation_window_years": 3,
+      "raw_score_column": "score_recalls_bruto",
+      "segment_statistics": {
+        "2dr hatchback": {
+          "mean": 1.0769230769230769,
+          "std": 1.1409536133993328
+        },
+        "2dr suv": {
+          "mean": 2.3125,
+          "std": 1.9029171684547912
+        },
+        "4dr hatchback": {
+          "mean": 1.1875,
+          "std": 1.3448396744593758
+        },
+        "4dr suv": {
+          "mean": 2.891891891891892,
+          "std": 3.6652774223661755
+        },
+        "cargo van": {
+          "mean": 0.2,
+          "std": 0.4
+        },
+        "convertible": {
+          "mean": 2.65625,
+          "std": 2.111861959859119
+        },
+        "coupe": {
+          "mean": 1.2560975609756098,
+          "std": 1.4697019409934469
+        },
+        "crew cab pickup": {
+          "mean": 1.125,
+          "std": 1.243734296383275
+        },
+        "extended cab pickup": {
+          "mean": 3.0,
+          "std": 5.022173057773121
+        },
+        "passenger minivan": {
+          "mean": 2.864864864864865,
+          "std": 2.0718468346050147
+        },
+        "passenger van": {
+          "mean": 4.714285714285714,
+          "std": 5.041663152863227
+        },
+        "sedan": {
+          "mean": 3.122448979591837,
+          "std": 3.043947846513616
+        },
+        "wagon": {
+          "mean": 2.0,
+          "std": 1.5118578920369088
+        }
+      },
+      "semantics": "100 indicates lower estimated propensity to NHTSA safety recalls, not general mechanical reliability.",
+      "train_end_year": 2005
+    },
+    "target_scale": "0-100 (100 = menor propensión histórica estimada a recalls)",
+    "warnings": []
+  },
+  "protocol": {
+    "as_of_date": "2026-09-18",
+    "interpretation": "Previously examined population; exploratory comparison, not untouched test.",
+    "invented_zero_labels": 0,
+    "manual_equivalences_applied": 0,
+    "snapshot_sha256": "f4acc58de2b01da1aae8c6d1fb0a2661b2c5802c9c59115adea4024ece83a9d9",
+    "train_end": 2007,
+    "validation_end": 2011
+  },
+  "published": false,
+  "remaining_exclusions": {
+    "auto_accepted": 1359,
+    "manual_review": 236,
+    "no_candidate": 26,
+    "rejected": 592
+  },
+  "removed_ids": [
+    "FORD_E150_1997",
+    "FORD_E150_1998",
+    "FORD_E250_1997",
+    "FORD_E250_1998",
+    "LEXUS_ES330_2004"
+  ],
+  "selected_model": "baseline",
+  "temporal_experiments": "C:\\Users\\xluna\\Desktop\\Trabajo-de-Fin-de-Master-main\\Trabajo-de-Fin-de-Master-main\\output\\candidate-20260925\\reports\\temporal_experiments\\070f6571b9e1df4e5a41211fcefbc3c1ffd63182e987119ac99859e0da49f22e\\results.json"
+}

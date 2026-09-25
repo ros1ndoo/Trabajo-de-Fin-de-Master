@@ -1,4 +1,4 @@
-"""Exercise the actual Streamlit interaction loop without network or artefacts."""
+"""Prueba el ciclo real de interacción Streamlit sin red ni artefactos externos."""
 
 from __future__ import annotations
 

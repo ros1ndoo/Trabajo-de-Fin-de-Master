@@ -1,11 +1,7 @@
-"""Streamlit presentation layer for the vehicle-recall reliability project.
-
-The dashboard deliberately keeps presentation concerns separate from the data and
-model layers. ``ReliabilityService`` is optional at import time so the explorer
-and honest empty states remain available while model artefacts are being built.
-
-The score shown here is always a *recall-propensity proxy*: it is not a measure
-of general mechanical reliability.
+"""Capa de presentación Streamlit del proyecto. Separa la interfaz de los datos y modelos;
+ReliabilityService es opcional al importar para conservar el explorador y estados vacíos
+honestos mientras faltan artefactos. El índice es un proxy de propensión a recalls, no
+fiabilidad mecánica general.
 """
 
 from __future__ import annotations
@@ -21,9 +17,9 @@ from html import escape
 from pathlib import Path
 from typing import Any
 
-try:  # Keep module imports useful in lightweight/test environments.
+try:  # Permitir importar en entornos ligeros y de pruebas.
     import pandas as pd
-except ImportError:  # pragma: no cover - exercised only without project deps
+except ImportError:  # pragma: no cover - solo se ejecuta sin las dependencias del proyecto
     pd = None  # type: ignore[assignment]
 
 
@@ -74,11 +70,11 @@ def _require_pandas() -> Any:
 
 
 def _streamlit() -> Any:
-    """Import Streamlit only when the web application is actually started."""
+    """Importa Streamlit únicamente al iniciar la aplicación web."""
 
     try:
         import streamlit as st
-    except ImportError as exc:  # pragma: no cover - depends on local install
+    except ImportError as exc:  # pragma: no cover - depende de la instalación local
         raise RuntimeError(
             "Streamlit no está instalado. Ejecuta `pip install -r requirements.txt` y "
             "después `streamlit run app.py`."
@@ -87,14 +83,14 @@ def _streamlit() -> Any:
 
 
 def _canonical(text: object) -> str:
-    """Return an accent/case-insensitive identifier for columns and filters."""
+    """Devuelve un identificador insensible a acentos y mayúsculas para columnas y filtros."""
 
     normalized = unicodedata.normalize("NFKD", str(text))
     return "".join(char for char in normalized if not unicodedata.combining(char)).lower().strip()
 
 
 def _as_mapping(value: Any) -> dict[str, Any]:
-    """Convert common service result types into a plain mapping."""
+    """Convierte resultados habituales del servicio en un diccionario simple."""
 
     if value is None:
         return {}
@@ -136,7 +132,7 @@ def _text(value: Any, default: str = "No disponible") -> str:
 
 
 def _as_bool(value: Any) -> bool:
-    """Interpret nullable service/data flags without treating every string as true."""
+    """Interpreta indicadores anulables sin considerar verdadero cualquier texto."""
 
     if value is None:
         return False
@@ -151,7 +147,7 @@ def _as_bool(value: Any) -> bool:
 
 
 def _service_status(service: Any | None) -> dict[str, Any]:
-    """Read the optional status contract without making the dashboard fragile."""
+    """Lee el estado opcional sin fragilizar la interfaz."""
 
     getter = getattr(service, "status", None) if service is not None else None
     if not callable(getter):
@@ -163,16 +159,15 @@ def _service_status(service: Any | None) -> dict[str, Any]:
 
 
 def project_root() -> Path:
-    """Resolve the repository root without relying on the current shell directory."""
+    """Resuelve la raíz sin depender del directorio actual de la consola."""
 
     return Path(__file__).resolve().parents[2]
 
 
 def normalize_catalog(frame: Any) -> Any:
-    """Normalize several likely Gold/catalogue schemas to the UI data contract.
-
-    It accepts a DataFrame or a tabular object that pandas can convert.  Unknown
-    columns are retained because services may expose additional context fields.
+    """Normaliza esquemas Gold/catálogo al contrato de interfaz. Acepta DataFrame u objetos
+    tabulares convertibles por pandas; conserva columnas desconocidas que puedan aportar
+    contexto.
     """
 
     pandas = _require_pandas()
@@ -206,8 +201,8 @@ def normalize_catalog(frame: Any) -> Any:
     data["ano_fabricacion"] = pandas.to_numeric(data["ano_fabricacion"], errors="coerce")
     data["mediana_cilindros"] = pandas.to_numeric(data["mediana_cilindros"], errors="coerce")
     data["mediana_cv"] = pandas.to_numeric(data["mediana_cv"], errors="coerce")
-    # Compatibility imports can provide HP instead of canonical CV. Convert
-    # only a renamed HP column, never an already canonical catalogue value.
+    # Las importaciones compatibles pueden aportar HP en lugar de CV. Convertir
+    # solo columnas renombradas desde HP, nunca valores que ya están en CV.
     if any(target == "mediana_cv" and _canonical(original) in {"engine_hp", "engine hp", "horsepower"}
            for original, target in rename.items()):
         from .data_sources import HP_TO_CV
@@ -244,10 +239,9 @@ def _gold_candidates() -> list[Path]:
 
 
 def load_catalog(service: Any | None = None) -> tuple[Any, str | None]:
-    """Load the catalogue from the service first, then from the Gold artefact.
-
-    Returns a normalized DataFrame and an optional diagnostic that is suitable
-    for an end-user warning (rather than exposing a raw traceback).
+    """Carga primero el catálogo del servicio y después el artefacto Gold. Devuelve un
+    DataFrame normalizado y un diagnóstico opcional para el usuario, sin exponer una traza
+    interna.
     """
 
     pandas = _require_pandas()
@@ -257,7 +251,7 @@ def load_catalog(service: Any | None = None) -> tuple[Any, str | None]:
         if callable(loader):
             try:
                 return normalize_catalog(loader()), None
-            except Exception as exc:  # Service failure should not blank the UI.
+            except Exception as exc:  # Un fallo del servicio no debe dejar la interfaz en blanco.
                 service_error = exc
 
     file_error: Exception | None = None
@@ -285,7 +279,9 @@ def load_catalog(service: Any | None = None) -> tuple[Any, str | None]:
 
 
 def resolve_default_service() -> Any | None:
-    """Best-effort discovery of the backend without making it a UI dependency."""
+    """Busca el servicio cuando está disponible sin convertirlo en dependencia obligatoria de
+    la interfaz.
+    """
 
     candidates = (
         ("auto_reliability.service", "ReliabilityService"),
@@ -299,22 +295,22 @@ def resolve_default_service() -> Any | None:
         except (ImportError, AttributeError, TypeError):
             continue
         except Exception:
-            # A model/artifact can be unavailable during first setup. The UI
-            # shows an empty state; it never constructs a score on its own.
+            # Durante la instalación inicial puede faltar el modelo o sus artefactos.
+            # La interfaz muestra un estado vacío; nunca construye una puntuación propia.
             continue
     return None
 
 
 def _call_prediction(service: Any, marca: str, modelo: str, ano_fabricacion: int) -> dict[str, Any]:
-    """Invoke the documented service contract with minor naming tolerance."""
+    """Invoca el contrato documentado del servicio tolerando pequeñas variantes de nombres."""
 
     predictor = (getattr(service, "predict_on_demand", None) or getattr(service, "predict", None)
                  or getattr(service, "predict_vehicle", None))
     if not callable(predictor):
         raise TypeError("El servicio no expone un método predict().")
 
-    # Prefer the agreed Spanish contract.  Inspecting the signature prevents a
-    # harmless mismatch from being reported as an unavailable model.
+    # Priorizar el contrato en castellano. Inspeccionar la firma evita
+    # confundir una incompatibilidad de argumentos con un modelo no disponible.
     try:
         parameter_names = set(inspect.signature(predictor).parameters)
     except (TypeError, ValueError):
@@ -334,10 +330,9 @@ def _call_prediction(service: Any, marca: str, modelo: str, ano_fabricacion: int
 
 
 def observation_notice(row: Mapping[str, Any]) -> str:
-    """Describe stored observation evidence, never the reliability of a car.
-
-    Old release catalogs lack the new evidence contract. Their matching status
-    can explain an exclusion but cannot certify an empty historical response.
+    """Describe evidencia observada, nunca la fiabilidad de un coche. Los catálogos antiguos
+    carecen del contrato nuevo: su cruce puede explicar una exclusión, pero no certificar
+    una respuesta histórica vacía.
     """
     reason = str(row.get("primary_reason", ""))
     if reason in {"", "nan", "None", "<NA>"}:
@@ -380,7 +375,7 @@ def _select_rows(catalog: Any, marca: str, modelo: str, ano_fabricacion: int) ->
 
 
 def _feature_context(catalog: Any, marca: str, modelo: str, ano_fabricacion: int) -> dict[str, Any]:
-    """Build display-only technical context from the selected catalogue row."""
+    """Construye contexto técnico exclusivamente visual desde la fila seleccionada."""
 
     pandas = _require_pandas()
     selected = _select_rows(catalog, marca, modelo, ano_fabricacion)
@@ -393,7 +388,7 @@ def _feature_context(catalog: Any, marca: str, modelo: str, ano_fabricacion: int
         (catalog["categoria_vehiculo"].map(_canonical) == _canonical(category))
         & (catalog["ano_fabricacion"] < int(ano_fabricacion))
     ].copy()
-    # No future/coincident launches are borrowed for an empty historical group.
+    # No usar lanzamientos futuros o simultáneos para completar grupos históricos vacíos.
 
     feature_columns = {
         "Cilindros": "mediana_cilindros",
@@ -444,7 +439,7 @@ def normalize_prediction(
     modelo: str,
     ano_fabricacion: int,
 ) -> dict[str, Any]:
-    """Make backend outputs safe and complete for the rendering layer."""
+    """Completa y valida resultados del servicio para su representación segura."""
 
     result = _as_mapping(raw_result)
     aliases = {
@@ -467,11 +462,11 @@ def normalize_prediction(
     if score is None or not 0 <= score <= 100:
         raise ValueError("La predicción no contiene un índice numérico 0–100.")
     normalized["prediccion_indice_100"] = score
-    # Absence of an evaluation metric must remain explicit.  Rendering a zero
-    # MAE would misleadingly imply perfect model validation.
+    # La ausencia de métricas debe ser explícita. Mostrar un MAE de cero
+    # implicaría falsamente una validación perfecta del modelo.
     mae = _safe_float(normalized.get("mae"))
     normalized["mae"] = mae if mae is not None and mae >= 0 else None
-    # A response for another vehicle must never be placed beside these filters.
+    # Nunca mostrar la respuesta de otro vehículo junto a estos selectores.
     for key, expected in (("marca", marca), ("modelo", modelo)):
         if normalized.get(key) is not None and _canonical(normalized[key]) != _canonical(expected):
             raise ValueError("La respuesta corresponde a otro vehículo.")
@@ -490,7 +485,7 @@ def normalize_prediction(
     context = _feature_context(catalog, marca, modelo, ano_fabricacion)
     for key, value in context.items():
         existing = normalized.get(key)
-        # Avoid equality comparisons between pandas/NumPy containers and None.
+        # Evitar comparar contenedores pandas/NumPy con None mediante igualdad.
         if existing is None or (isinstance(existing, (str, Mapping, Sequence)) and len(existing) == 0):
             normalized[key] = value
     normalized["categoria_vehiculo"] = _text(
@@ -504,7 +499,7 @@ def make_radar_figure(
     segment_features: Mapping[str, Any],
     feature_ranges: Mapping[str, Sequence[float]] | None = None,
 ) -> Any | None:
-    """Create a unitless 0–100 radar from technical features and segment means."""
+    """Crea un radar adimensional 0–100 con características técnicas y medias del segmento."""
 
     usable = [
         label
@@ -516,7 +511,7 @@ def make_radar_figure(
         return None
     try:
         import plotly.graph_objects as go
-    except ImportError:  # pragma: no cover - project requirements include Plotly
+    except ImportError:  # pragma: no cover - las dependencias del proyecto incluyen Plotly
         return None
 
     def relative_value(label: str, value: float) -> float:
@@ -578,7 +573,7 @@ def make_radar_figure(
 
 
 def _factor_table(result: Mapping[str, Any]) -> Any:
-    """Turn structured service explanations into a concise, safe factor table."""
+    """Convierte explicaciones estructuradas en una tabla de factores breve y segura."""
 
     pandas = _require_pandas()
     raw_factors = result.get("factores") or result.get("feature_importance") or result.get("factors")
@@ -660,7 +655,7 @@ def _narrative(result: Mapping[str, Any]) -> str:
 
 
 def summary_frame(result: Mapping[str, Any]) -> Any:
-    """Create the downloadable, tabular prediction summary."""
+    """Crea el resumen tabular descargable de la predicción."""
 
     pandas = _require_pandas()
     features = result.get("vehicle_features") if isinstance(result.get("vehicle_features"), Mapping) else {}
@@ -737,6 +732,30 @@ def _inject_styles(st: Any) -> None:
         [data-testid="stMetricValue"] { color: var(--ar-text); }
         .stSelectbox label, .stMarkdown p, .stCaption { color: var(--ar-muted); }
         [data-testid="stDataFrame"] { border: 1px solid var(--ar-border); border-radius: 12px; overflow: hidden; }
+        button:focus-visible, a:focus-visible, [role="combobox"]:focus-visible {
+          outline:3px solid #a8d3ff !important; outline-offset:3px;
+        }
+        @media (min-width: 951px) {
+          .block-container { max-width:1560px; padding:2rem 3rem 3rem; }
+          .ar-nav { margin-bottom:1rem; padding-bottom:.8rem; }
+          .ar-title { font-size:2.35rem; line-height:1.18; letter-spacing:-.04em; }
+          .ar-title br { display:none; }
+          .ar-title span::before { content:' '; }
+          .ar-subtitle { max-width:1100px; font-size:.95rem; line-height:1.5; margin:.5rem 0 .65rem; }
+          .ar-kicker { margin-bottom:.3rem; font-size:.7rem; }
+          .ar-proxy-badge { margin-bottom:.35rem; }
+          [data-testid="stAlertContainer"] { padding:.55rem .85rem; }
+          [data-testid="stAlertContainer"] p { font-size:.9rem; }
+          [data-testid="stTabs"] [role="tablist"] { gap:1.5rem; border-bottom:1px solid var(--ar-border); }
+          [data-testid="stTabs"] [role="tab"] { padding:.6rem .2rem; }
+          .ar-score-hero { padding:1.1rem 1.5rem; border-radius:12px; }
+          .ar-ring { width:150px; height:150px; margin:.6rem auto; }
+          .ar-ring-inner { width:118px; height:118px; }
+          .ar-ring-value { font-size:2.8rem; }
+          .ar-stat-line strong { white-space:normal; text-align:right; }
+          .ar-section-title { margin:1.1rem 0 .6rem; }
+          [data-testid="stVerticalBlockBorderWrapper"] { border-radius:12px; }
+        }
         @media (max-width: 950px) {
           [data-testid="stHorizontalBlock"] { flex-direction:column; gap:1rem; }
           [data-testid="stColumn"] { width:100% !important; flex:1 1 100% !important; min-width:0 !important; }
@@ -779,7 +798,7 @@ def _is_demo_result(result: Mapping[str, Any] | None, status: Mapping[str, Any] 
 def _render_demo_indicator(
     st: Any, status: Mapping[str, Any], result: Mapping[str, Any] | None = None
 ) -> None:
-    """Make synthetic data impossible to confuse with an NHTSA-backed result."""
+    """Distingue inequívocamente datos sintéticos de evidencia respaldada por NHTSA."""
 
     if _is_demo_result(result, status):
         st.markdown(
@@ -792,7 +811,7 @@ def _render_demo_indicator(
 
 
 def _render_score_ring(st: Any, result: Mapping[str, Any] | None, *, status: Mapping[str, Any]) -> None:
-    """Render the hero score card; it intentionally has a useful empty state."""
+    """Representa la tarjeta principal de puntuación, incluido un estado vacío útil."""
 
     if result is None:
         score, color = 0.0, "#4ea1ff"
@@ -831,7 +850,7 @@ def _render_score_ring(st: Any, result: Mapping[str, Any] | None, *, status: Map
 
 
 def _clear_current_result(st: Any) -> None:
-    """Changing a selector invalidates the displayed estimate, not comparisons."""
+    """Cambiar un selector invalida la estimación visible, no las comparaciones."""
 
     st.session_state.pop("ar_current_result", None)
     st.session_state.pop("ar_last_error", None)
@@ -864,10 +883,12 @@ def _reset_dashboard(st: Any) -> None:
 
 
 def _render_selector(st: Any, catalog: Any) -> tuple[str | None, str | None, int | None, bool]:
-    """Render cascading brand/model/year controls and return the action state."""
+    """Representa selectores encadenados de marca, modelo y año y devuelve la acción
+    solicitada.
+    """
 
-    # A real Streamlit container is required here. An opening HTML <div>
-    # cannot wrap later Streamlit components and would render as an empty card.
+    # Se necesita un contenedor real de Streamlit. Abrir un <div> HTML
+    # no envuelve componentes posteriores de Streamlit y produce una tarjeta vacía.
     with st.container(border=True):
         st.markdown("#### Consulta un lanzamiento")
         st.caption("Mercado estadounidense · vehículos desde 1995 · los filtros se actualizan en cascada")
@@ -954,7 +975,7 @@ def _comparison_entry(result: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def comparison_warnings(entries: Sequence[Mapping[str, Any]]) -> list[str]:
-    """Flag non-comparable estimates; never derive a purchase ranking."""
+    """Señala estimaciones no comparables; nunca deriva un ranking de compra."""
     warnings = []
     for field in ("Versión modelo", "Versión datos", "Escala"):
         if any(not entry.get(field) for entry in entries):
@@ -977,8 +998,8 @@ def _add_to_comparison(st: Any, result: Mapping[str, Any]) -> None:
     entry = _comparison_entry(result)
     entries = [existing for existing in entries if existing.get("id") != entry["id"]]
     entries.append(entry)
-    # Two cards make the comparison legible on mobile and desktop.  A newly
-    # added third result replaces the oldest one.
+    # Dos tarjetas permiten comparar en móvil y escritorio. Un tercer
+    # resultado sustituye al más antiguo.
     st.session_state["ar_comparison"] = entries[-2:]
 
 
@@ -1035,7 +1056,7 @@ def _render_brand_history(st: Any, result: Mapping[str, Any]) -> None:
 
 
 def _pdf_hook(service: Any | None, result: Mapping[str, Any]) -> tuple[bytes | None, str | None]:
-    """Consume, but never implement, the backend's optional PDF-report hook."""
+    """Utiliza la exportación PDF opcional del servicio, sin implementarla en la interfaz."""
 
     hook = getattr(service, "build_prediction_report_pdf", None) if service is not None else None
     if not callable(hook):
@@ -1226,7 +1247,7 @@ def _render_result(st: Any, service: Any | None, result: Mapping[str, Any]) -> N
 
 
 def _coverage_notice(st: Any, status: Mapping[str, Any], catalog: Any = None) -> None:
-    """Keep the bounded technical sample from being mistaken for a current forecast feed."""
+    """Evita confundir la muestra técnica acotada con una previsión de vehículos actuales."""
 
     message = _text(status.get("message"), "")
     max_year = _safe_int(
@@ -1291,7 +1312,7 @@ def _coverage_notice(st: Any, status: Mapping[str, Any], catalog: Any = None) ->
 
 
 def _records_from_response(response: Any) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Normalize the optional NHTSA explorer response for display only."""
+    """Normaliza la respuesta opcional del explorador NHTSA solo para mostrarla."""
 
     payload = _as_mapping(response)
     candidates = payload.get("records") or payload.get("results") or payload.get("recalls") or []
@@ -1342,10 +1363,9 @@ def _render_recall_records(st: Any, response: Any) -> None:
 
 
 def _render_real_recalls_tab(st: Any, service: Any | None) -> None:
-    """Render an explicit-action explorer for official recall records.
-
-    It intentionally has no automatic fetch: entering a make/model/year never
-    sends a request.  This tab is a source explorer, not a reliability score.
+    """Representa el explorador oficial con consulta explícita. Introducir marca, modelo y año
+    no envía solicitudes automáticamente. Es un explorador de fuentes, no una puntuación de
+    fiabilidad.
     """
 
     st.markdown("<div class='ar-section-title'>Consulta de recalls oficiales</div>", unsafe_allow_html=True)
@@ -1380,7 +1400,7 @@ def _render_real_recalls_tab(st: Any, service: Any | None) -> None:
         for key in ("ar_real_response", "ar_real_error", "ar_real_query", *dependent_keys):
             st.session_state.pop(key, None)
 
-    # Outside st.form: dependent options must rerun immediately on selection.
+    # Fuera de st.form: los selectores dependientes deben actualizarse inmediatamente.
     first, second, third = st.columns([1, 1.35, .72])
     with first:
         make = st.selectbox("Marca (NHTSA)", [PLACEHOLDER, *sorted(local_catalog.marca.unique())],
@@ -1428,7 +1448,7 @@ def _get_service(st: Any, explicit_service: Any | None) -> Any | None:
 
 
 def _get_catalog(st: Any, service: Any | None) -> tuple[Any, str | None]:
-    """Cache catalogue data per Streamlit session, without serialising a service."""
+    """Almacena el catálogo por sesión Streamlit sin serializar el servicio."""
 
     revision = service.data_revision() if service is not None and callable(getattr(service, "data_revision", None)) else None
     if "ar_catalog" not in st.session_state or revision != st.session_state.get("ar_catalog_revision"):
@@ -1445,17 +1465,11 @@ def _get_catalog(st: Any, service: Any | None) -> tuple[Any, str | None]:
 
 
 def run_dashboard(service: Any | None = None) -> None:
-    """Run the responsive Streamlit dashboard.
-
-    Backend integration contract (implemented outside this UI module):
-
-    * ``load_catalog() -> pandas.DataFrame``
-    * ``predict(marca, modelo, ano_fabricacion) -> Mapping | dataclass``
-    * optional ``build_prediction_report_pdf(prediction) -> bytes | Path``
-
-    A prediction mapping should include ``prediccion_indice_100``, ``mae`` and
-    ``modelo_usado``.  Optional keys are rendered when supplied and otherwise
-    derived safely from Gold.
+    """Ejecuta la interfaz adaptable. Contrato externo: load_catalog() -> pandas.DataFrame;
+    predict(marca, modelo, ano_fabricacion) -> Mapping o dataclass;
+    build_prediction_report_pdf(prediction) -> bytes o Path es opcional. La predicción debe
+    incluir prediccion_indice_100, mae y modelo_usado; los campos opcionales se muestran si
+    existen o se derivan de Gold de forma segura.
     """
 
     st = _streamlit()
@@ -1472,10 +1486,10 @@ def run_dashboard(service: Any | None = None) -> None:
         unsafe_allow_html=True,
     )
     st.markdown("<div class='ar-kicker'>Mercado estadounidense · Desde 1995</div>", unsafe_allow_html=True)
-    st.markdown("<h1 class='ar-title'>Conoce el historial.<br><span style='color:#7db6ff'>Anticipa los recalls.</span></h1>", unsafe_allow_html=True)
+    st.markdown("<h1 class='ar-title'>Conoce el historial.<br><span style='color:#7db6ff'>Compara con evidencia.</span></h1>", unsafe_allow_html=True)
     st.markdown(
-        "<p class='ar-subtitle'>Estima la propensión a <em>recalls</em> de seguridad de un lanzamiento "
-        "a partir de sus especificaciones y del historial previo de su fabricante.</p>",
+        "<p class='ar-subtitle'>Explora el historial de <em>recalls</em> y la referencia estadística "
+        "de marca y categoría. Análisis retrospectivo: no certifica la fiabilidad individual de un vehículo.</p>",
         unsafe_allow_html=True,
     )
     st.markdown(

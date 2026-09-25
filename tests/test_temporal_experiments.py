@@ -1,4 +1,4 @@
-"""Frozen protocols and isolated execution are independent of serving files."""
+"""Protocolos congelados y ejecuciones aisladas independientes del servicio."""
 
 from types import SimpleNamespace
 

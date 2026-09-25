@@ -1,4 +1,4 @@
-"""Descriptive subgroup audit of a frozen model; never fit or select models."""
+"""Auditoría descriptiva de subgrupos de un modelo congelado; no ajusta ni selecciona modelos."""
 
 from __future__ import annotations
 
@@ -22,10 +22,9 @@ from .storage import atomic_json
 
 
 def error_summary(frame: pd.DataFrame, *, minimum_group_size: int = 30) -> dict[str, Any]:
-    """Describe paired errors, retaining small groups without claiming precision.
-
-    The minimum is a reporting flag, not a statistical significance threshold.
-    Positive bias means the index is overestimated (lower apparent recall risk).
+    """Describe errores emparejados conservando grupos pequeños sin afirmar precisión. El
+    mínimo es una señal de presentación, no significación estadística. Sesgo positivo
+    significa sobreestimar el índice y aparentar menor propensión a recalls.
     """
     if minimum_group_size < 1:
         raise ValueError("minimum_group_size must be positive")
@@ -44,10 +43,9 @@ def error_summary(frame: pd.DataFrame, *, minimum_group_size: int = 30) -> dict[
 
 def audit_frozen_model(gold: pd.DataFrame, artifact: ReliabilityModelArtifact,
                        *, minimum_group_size: int = 30) -> dict[str, Any]:
-    """Audit only the recorded test years using the persisted target scale.
-
-    Fail closed on stale inputs or a partition that cannot be reconstructed.
-    This reuses already inspected test data: it is not a new independent test.
+    """Audita solo años de test registrados con la escala persistida. Falla ante datos
+    obsoletos o particiones irreconstruibles. Reutiliza test ya examinado, no una evaluación
+    independiente nueva.
     """
     require_columns(gold, ("id_vehiculo_ano", "ano_fabricacion", *PREDICTION_FEATURES), context="Audit Gold")
     if gold["id_vehiculo_ano"].isna().any() or gold["id_vehiculo_ano"].duplicated().any():
@@ -77,7 +75,7 @@ def audit_frozen_model(gold: pd.DataFrame, artifact: ReliabilityModelArtifact,
     if normalizer.train_end_year + normalizer.observation_window_years > int(test.ano_fabricacion.min()):
         raise ValueError("Target normalizer includes labels unavailable at test launch")
     test["observed"] = normalizer.transform(test)
-    # Explicit feature allowlist: outcomes never reach the estimator.
+    # Lista explícita de características permitidas: los resultados no llegan al estimador.
     test["predicted"] = artifact.predict(test.loc[:, list(PREDICTION_FEATURES)])
     dimensions = ["marca", "categoria_vehiculo", "ano_fabricacion"]
     if isinstance(artifact.estimator, BrandSegmentMeanBaseline):
@@ -108,8 +106,8 @@ def audit_frozen_model(gold: pd.DataFrame, artifact: ReliabilityModelArtifact,
 
 
 def publish_model_audit(paths: ProjectPaths, *, minimum_group_size: int = 30) -> Path:
-    """Publish a content-addressed JSON report without touching serving files."""
-    # A changed model during loading must not acquire the wrong provenance hash.
+    """Publica JSON identificado por contenido sin tocar archivos de servicio."""
+    # Un modelo modificado durante la carga no debe recibir una huella de procedencia incorrecta.
     model_hash = hashlib.sha256(paths.model_path.read_bytes()).hexdigest()
     artifact = load_model_artifact(paths.model_path)
     gold = pd.read_parquet(paths.gold_path)
@@ -120,7 +118,7 @@ def publish_model_audit(paths: ProjectPaths, *, minimum_group_size: int = 30) ->
     digest = hashlib.sha256(json.dumps(report, sort_keys=True, allow_nan=False).encode()).hexdigest()
     destination = paths.reports_dir / "model_audit" / f"{digest}.json"
     atomic_json(destination, report, immutable=True)
-    # Detect an existing corrupt report instead of silently accepting it.
+    # Detectar informes existentes corruptos en lugar de aceptarlos silenciosamente.
     if json.loads(destination.read_text(encoding="utf-8")) != report:
         raise ValueError("Existing content-addressed report is inconsistent")
     return destination

@@ -1,7 +1,6 @@
-"""Independent EPA/DOE inventory; never silently promoted into predictor Gold.
-
-EPA size classes are not CooperUnion body styles and this source does not
-supply general engine horsepower. Both gaps remain explicit for later review.
+"""Inventario independiente EPA/DOE, nunca promovido silenciosamente a Gold. Las clases de
+tamaño EPA no equivalen a carrocerías CooperUnion ni aportan potencia general de motor.
+Ambas carencias permanecen explícitas para revisión.
 """
 
 from __future__ import annotations
@@ -32,7 +31,7 @@ FIELDS = ("id", "make", "model", "year", "cylinders", "VClass", "fuelType1", "cr
 
 
 def digest(path: Path) -> str:
-    """Hash source bytes without loading the archive into memory."""
+    """Calcula la huella por bloques sin cargar el archivo entero en memoria."""
     result = hashlib.sha256()
     with path.open("rb") as stream:
         for chunk in iter(lambda: stream.read(65536), b""):
@@ -41,11 +40,9 @@ def digest(path: Path) -> str:
 
 
 def read_inventory(archive_path: Path, *, min_year: int = 1995) -> pd.DataFrame:
-    """Validate bounded XML and retain source identities and missing attributes.
-
-    No NHTSA name equivalence, zero-recall label, or train eligibility follows
-    from presence in this independent inventory. Electric cylinders are not
-    inferred when absent in the source.
+    """Valida XML acotado y conserva identidades y atributos ausentes. La presencia no acredita
+    equivalencia NHTSA, cero recalls ni elegibilidad de entrenamiento. No infiere cilindros
+    de eléctricos si faltan en la fuente.
     """
     rows: list[dict[str, str]] = []
     try:
@@ -90,10 +87,9 @@ def read_inventory(archive_path: Path, *, min_year: int = 1995) -> pd.DataFrame:
 
 
 def acquire_inventory(paths: ProjectPaths) -> dict[str, object]:
-    """Acquire today's immutable source and publish a separate audited inventory.
-
-    HTTP failures are surfaced without blind retries. A repeated successful
-    acquisition reuses and verifies the snapshot, without a network request.
+    """Obtiene la fuente inmutable del día y publica un inventario auditado separado. Expone
+    fallos HTTP sin reintentos ciegos; adquisiciones repetidas correctas verifican y
+    reutilizan la instantánea sin red.
     """
     now = datetime.now(timezone.utc)
     directory = paths.raw_dir / "fuel_economy" / now.date().isoformat()
@@ -130,7 +126,7 @@ def acquire_inventory(paths: ProjectPaths) -> dict[str, object]:
                 "use_scope": "Non-commercial scientific/educational use; no vehicle photographs.",
             }
             atomic_json(manifest_path, manifest, immutable=True)
-        # Snapshot-keyed derived artefacts do not replace production Gold/model.
+        # Los artefactos ligados a una instantánea no sustituyen Gold ni el modelo productivo.
         output = paths.processed_dir / "fuel_economy" / now.date().isoformat()
         frame["source_sha256"] = manifest["sha256"]
         frame["source_retrieved_at"] = manifest["retrieved_at_utc"]

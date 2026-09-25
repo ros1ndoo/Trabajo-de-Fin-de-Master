@@ -1,4 +1,4 @@
-"""Name alignment is never evidence for a zero label or sufficient predictors."""
+"""Alinear nombres no acredita cero recalls ni suficiencia predictora."""
 
 import hashlib
 import json

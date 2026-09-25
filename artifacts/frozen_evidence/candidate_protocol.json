@@ -1,0 +1,9 @@
+{
+  "as_of_date": "2026-09-18",
+  "interpretation": "Previously examined population; exploratory comparison, not untouched test.",
+  "invented_zero_labels": 0,
+  "manual_equivalences_applied": 0,
+  "snapshot_sha256": "f4acc58de2b01da1aae8c6d1fb0a2661b2c5802c9c59115adea4024ece83a9d9",
+  "train_end": 2007,
+  "validation_end": 2011
+}

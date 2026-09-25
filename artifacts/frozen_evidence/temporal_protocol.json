@@ -1,0 +1,27 @@
+{
+  "advanced_improvement_threshold": 0.1,
+  "aggregation": "No pooled MAE: each window uses its own train-only target normalizer.",
+  "dataset_fingerprint": "cd4ba765b6a3a391e4870c2e13a2f009aa9fe0d69593471d0feda973ed674367",
+  "interpretation": "Exploratory retrospective evaluation on already inspected data, not untouched final tests.",
+  "observation_window_years": 3,
+  "random_state": 73,
+  "serving_publication": false,
+  "version": "retrospective-expanding-v1",
+  "windows": [
+    {
+      "test_end": 2008,
+      "train_end": 2001,
+      "validation_end": 2005
+    },
+    {
+      "test_end": 2011,
+      "train_end": 2004,
+      "validation_end": 2008
+    },
+    {
+      "test_end": 2017,
+      "train_end": 2007,
+      "validation_end": 2011
+    }
+  ]
+}

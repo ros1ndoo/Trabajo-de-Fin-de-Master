@@ -1,4 +1,4 @@
-"""Review fixtures are synthetic; no real alias is approved by these tests."""
+"""Las revisiones de prueba son sintéticas; no aprueban alias reales."""
 
 import pandas as pd
 import pytest

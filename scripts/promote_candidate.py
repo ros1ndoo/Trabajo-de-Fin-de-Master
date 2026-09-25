@@ -1,4 +1,4 @@
-"""Integrate a validated local candidate into the main project, retaining backups."""
+"""Integra una candidata local validada en el proyecto principal conservando respaldos."""
 
 from __future__ import annotations
 
@@ -23,10 +23,9 @@ DERIVED = (
 
 
 def promote(root: Path, candidate: Path) -> str:
-    """Activate last, rolling back loose files if validation fails.
-
-    Input is a trusted locally generated candidate, never an external pickle.
-    README, docs, raw data and source files are outside this allowlist.
+    """Activa al final y revierte archivos de trabajo si falla la validación. La entrada es una
+    candidata local confiable, nunca pickle externo. README, docs, fuentes originales y
+    código están fuera de la lista de modificación.
     """
     root, candidate = root.resolve(), candidate.resolve()
     if (root / "output") not in candidate.parents:
@@ -52,7 +51,7 @@ def promote(root: Path, candidate: Path) -> str:
         except Exception:
             for name, value in previous.items():
                 if value is None:
-                    (root / name).unlink(missing_ok=True)  # Only this operation's new allowlisted files.
+                    (root / name).unlink(missing_ok=True)  # Solo archivos nuevos autorizados de esta operación.
                 else:
                     with atomic_destination(root / name) as temporary:
                         temporary.write_bytes(value)

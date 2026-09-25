@@ -1,9 +1,7 @@
-"""Cleaning, quality checks, recall scoring, and Gold-layer construction.
-
-The central design rule in this module is temporal safety: recall outcomes are
-labels, never prediction features for the vehicle being scored.  The brand
-history feature therefore only reads completed prior cohorts, and reliability
-normalisation is fitted on a caller-supplied training period.
+"""Limpieza, controles de calidad, puntuación y construcción de Gold. Regla central: los
+resultados de recalls son etiquetas, nunca características del propio vehículo. El historial
+de marca solo utiliza cohortes previas completas y la normalización se ajusta al período de
+entrenamiento indicado.
 """
 
 from __future__ import annotations
@@ -36,12 +34,12 @@ from .matching import MATCH_COLUMNS, accepted_matches
 
 
 class DataQualityError(ValueError):
-    """Raised when a dataset cannot be safely promoted to the next layer."""
+    """Indica que un conjunto no puede promoverse con seguridad a la siguiente capa."""
 
 
 @dataclass(frozen=True)
 class QualityReport:
-    """A compact, serialisable data-quality summary for pipeline manifests."""
+    """Resumen compacto y serializable de calidad para manifiestos."""
 
     source_rows: int
     output_rows: int
@@ -71,7 +69,7 @@ def _display_or_key(value: object, default: str = "sin_categoria") -> str:
 
 
 def _first_mode(values: pd.Series) -> str:
-    """Choose a deterministic category when trims disagree about segment."""
+    """Elige una categoría determinista si los acabados discrepan sobre el segmento."""
 
     clean = values.dropna().astype(str)
     if clean.empty:
@@ -86,11 +84,10 @@ def prepare_technical_specs(
     *,
     min_year: int = MIN_MODEL_YEAR,
 ) -> pd.DataFrame:
-    """Aggregate observed trim specifications without cross-vehicle imputation.
-
-    Missing values stay missing until the estimator's train-only imputer.
-    Borrowing even same-year test/validation vehicles during preprocessing
-    would make evaluation transductive. Counts expose partial trim coverage.
+    """Agrega especificaciones observadas sin imputación entre vehículos. Los nulos permanecen
+    hasta la imputación ajustada solo con entrenamiento. Usar vehículos de test/validación,
+    incluso del mismo año, haría transductiva la evaluación. Los conteos muestran cobertura
+    parcial de acabados.
     """
 
     require_columns(raw_technical, ("marca", "modelo", "ano_fabricacion"), context="Raw technical data")
@@ -158,7 +155,7 @@ def quality_check_technical_specs(
     source_rows: int | None = None,
     min_year: int = MIN_MODEL_YEAR,
 ) -> QualityReport:
-    """Validate the processed technical layer and return auditable counts."""
+    """Valida la capa técnica procesada y devuelve recuentos auditables."""
 
     require_columns(
         technical,
@@ -188,11 +185,9 @@ def quality_check_technical_specs(
 
 
 def classify_recall_severity(description: object) -> str:
-    """Classify a recall using the documented ordered keyword dictionary.
-
-    Critical terms take precedence over moderate and low terms.  A recall with
-    no listed term remains in the target at the low/default weight rather than
-    silently disappearing from official recall evidence.
+    """Clasifica campañas con el diccionario ordenado documentado. Términos críticos prevalecen
+    sobre moderados y leves. Sin coincidencias se conserva la campaña con peso
+    bajo/predeterminado, sin eliminar evidencia oficial silenciosamente.
     """
 
     text = canonical_text(description)
@@ -204,14 +199,14 @@ def classify_recall_severity(description: object) -> str:
 
 
 def score_recall_severity(description: object) -> float:
-    """Return 3.0 / 1.5 / 1.0 severity weight for an NHTSA recall description."""
+    """Devuelve peso de severidad 3,0 / 1,5 / 1,0 para una descripción NHTSA."""
 
     severity = classify_recall_severity(description)
     return float(RECALL_SEVERITY_WEIGHTS.get(severity, RECALL_SEVERITY_WEIGHTS["low"]))
 
 
 def prepare_recall_events(recall_records: pd.DataFrame) -> pd.DataFrame:
-    """Attach severity and canonical dates to normalised NHTSA campaign records."""
+    """Añade severidad y fechas canónicas a campañas normalizadas."""
 
     if recall_records.empty:
         columns = list(recall_records.columns) + [
@@ -237,9 +232,9 @@ def prepare_recall_events(recall_records: pd.DataFrame) -> pd.DataFrame:
     frame["severidad_recall"] = frame["descripcion_recall"].map(classify_recall_severity)
     frame["peso_severidad"] = frame["descripcion_recall"].map(score_recall_severity).astype(float)
 
-    # A campaign can be represented by several component rows.  Count it once
-    # per vehicle at its highest severity, so a verbose API record cannot
-    # inflate target labels.
+    # Una campaña puede aparecer en varios componentes. Contarla una sola vez
+    # por vehículo con la severidad máxima evita que respuestas extensas
+    # inflen artificialmente las etiquetas objetivo.
     if "campana_nhtsa" not in frame.columns:
         frame["campana_nhtsa"] = pd.NA
     missing_campaign = frame["campana_nhtsa"].isna() | frame["campana_nhtsa"].astype(str).str.strip().eq("")
@@ -270,11 +265,9 @@ def aggregate_recall_scores(
     *,
     observation_window_years: int = OBSERVATION_WINDOW_YEARS,
 ) -> pd.DataFrame:
-    """Calculate weighted recall labels in the first fixed observation window.
-
-    The three-year window is inclusive by model year: a 2018 vehicle includes
-    reported recalls from 2018, 2019, and 2020 only.  Records without a report
-    date are never guessed into a window and are reported separately.
+    """Calcula etiquetas ponderadas en la primera ventana fija. Incluye tres años-modelo: para
+    2018 cuenta informes de 2018, 2019 y 2020. No adivina fechas ausentes para colocarlas en
+    la ventana; las informa por separado.
     """
 
     if observation_window_years < 1:
@@ -296,8 +289,8 @@ def aggregate_recall_scores(
     if recall_records.empty or mapping.empty:
         return result.drop(columns="nhtsa_vehicle_id")
     events = prepare_recall_events(recall_records)
-    # Several technical trim families may legitimately map to one official
-    # model. Each receives the same campaign once, not an arbitrary rejection.
+    # Varias familias técnicas pueden corresponder legítimamente a un modelo
+    # oficial. Cada una recibe la campaña una vez, sin rechazo arbitrario.
     events = events.merge(mapping, on="nhtsa_vehicle_id", how="inner", validate="many_to_many")
     if events.empty:
         return result.drop(columns="nhtsa_vehicle_id")
@@ -341,9 +334,9 @@ def aggregate_recall_scores(
 
 def _as_date(value: date | datetime | str | None) -> date:
     if value is None:
-        # Completeness must reflect the actual observation cut-off, not the
-        # end of a hard-coded future calendar year.  Callers can still pass an
-        # explicit snapshot date to reproduce a historical experiment.
+        # La completitud depende de la fecha real de corte de observación, no del
+        # final de un año futuro fijo. Se puede proporcionar una fecha explícita
+        # de instantánea para reproducir un experimento histórico.
         return datetime.now(timezone.utc).date()
     if isinstance(value, datetime):
         return value.date()
@@ -361,7 +354,7 @@ def cohort_is_complete(
     as_of_date: date | datetime | str | None = None,
     observation_window_years: int = OBSERVATION_WINDOW_YEARS,
 ) -> bool:
-    """Whether all calendar years in the fixed launch window have elapsed."""
+    """Indica si han transcurrido todos los años naturales de la ventana de lanzamiento."""
 
     cutoff = _as_date(as_of_date)
     year = int(model_year)
@@ -370,7 +363,7 @@ def cohort_is_complete(
 
 @dataclass(frozen=True)
 class ReliabilityNormalizer:
-    """Train-only segment statistics for the documented z-score target scale."""
+    """Estadísticas de segmento de entrenamiento para la escala z-score documentada."""
 
     segment_statistics: dict[str, dict[str, float]]
     global_mean: float
@@ -378,7 +371,7 @@ class ReliabilityNormalizer:
     train_end_year: int
 
     def transform(self, frame: pd.DataFrame) -> pd.DataFrame:
-        """Add a bounded 0--100 reliability score; higher means fewer recalls."""
+        """Añade un índice acotado 0–100; mayor valor representa menos recalls relativos."""
 
         require_columns(frame, ("categoria_vehiculo", "score_recalls_bruto"), context="Reliability target input")
         output = frame.copy()
@@ -397,9 +390,9 @@ class ReliabilityNormalizer:
                 sources.append("segment_train")
         raw = pd.to_numeric(output["score_recalls_bruto"], errors="raise").astype(float)
         z_score = (raw - np.asarray(means)) / np.asarray(stds)
-        # 50 is the train-segment average and each standard deviation changes
-        # the displayed score by 10 points.  The direction is inverted because
-        # a larger raw recall burden means lower estimated reliability.
+        # 50 representa la media del segmento de entrenamiento y cada desviación
+        # típica cambia el índice en 10 puntos. La dirección se invierte porque
+        # una mayor carga de recalls corresponde a un índice menor.
         output["indice_fiabilidad_100"] = np.clip(50.0 - 10.0 * z_score, 0.0, 100.0)
         output["origen_normalizacion_indice"] = sources
         return output
@@ -420,7 +413,7 @@ def fit_reliability_normalizer(
     *,
     train_end_year: int,
 ) -> ReliabilityNormalizer:
-    """Fit target scaling parameters using only completed training-year cohorts."""
+    """Ajusta parámetros de escala con cohortes completas de entrenamiento exclusivamente."""
 
     require_columns(
         completed_cohorts,
@@ -445,9 +438,9 @@ def fit_reliability_normalizer(
     for category, group in training.groupby("categoria_vehiculo", sort=True):
         group_values = pd.to_numeric(group["score_recalls_bruto"], errors="raise").astype(float)
         std = float(group_values.std(ddof=0))
-        # One-row or constant segments cannot define their own z-score.  The
-        # mean remains segment-specific, while a non-zero training-only scale
-        # comes from the overall training distribution.
+        # Un segmento constante o de una fila no define su propio z-score.
+        # La media sigue siendo específica del segmento; la escala no nula
+        # procede de la distribución global de entrenamiento exclusivamente.
         if not np.isfinite(std) or std == 0:
             std = global_std
         statistics[str(category)] = {"mean": float(group_values.mean()), "std": std}
@@ -461,7 +454,7 @@ def _brand_history_for_queries(
     lookback_years: int,
     observation_window_years: int,
 ) -> pd.DataFrame:
-    """Compute a no-future-information brand history for query vehicle years."""
+    """Calcula historial de marca sin información futura para los años consultados."""
 
     require_columns(queries, ("id_vehiculo_ano", "marca", "ano_fabricacion"), context="Brand-history queries")
     require_columns(completed_reference, ("marca", "ano_fabricacion", "score_recalls_bruto"), context="Brand-history reference")
@@ -469,7 +462,7 @@ def _brand_history_for_queries(
     reference["marca"] = reference["marca"].map(comparison_make)
     reference["ano_fabricacion"] = pd.to_numeric(reference["ano_fabricacion"], errors="raise").astype(int)
     reference["score_recalls_bruto"] = pd.to_numeric(reference["score_recalls_bruto"], errors="raise").astype(float)
-    # Avoid model-count bias: each make/year contributes a single mean outcome.
+    # Evitar sesgo por número de modelos: cada marca/año aporta una única media.
     brand_year = reference.groupby(["marca", "ano_fabricacion"], as_index=False)["score_recalls_bruto"].mean()
 
     rows: list[dict[str, object]] = []
@@ -477,8 +470,8 @@ def _brand_history_for_queries(
         identifier, make, launch_year = query
         normalized_make = comparison_make(make)
         launch_year = int(launch_year)
-        # A cohort's window covers launch_year .. launch_year+2.  It is known
-        # before this query only if prior_launch + window <= query_launch.
+        # La ventana cubre año_lanzamiento .. año_lanzamiento+2. Solo se conoce
+        # antes de la consulta si lanzamiento_previo + ventana <= lanzamiento_consultado.
         latest_known_launch = launch_year - observation_window_years
         earliest_launch = latest_known_launch - lookback_years + 1
         recent = brand_year.loc[
@@ -488,8 +481,8 @@ def _brand_history_for_queries(
         if not brand_recent.empty:
             score, source = float(brand_recent.mean()), "marca_cohortes_completadas_previas"
         elif not recent.empty:
-            # This is still safe: it uses only outcomes completed before the
-            # queried launch, merely falling back to the market-wide context.
+            # Este respaldo sigue siendo temporalmente válido: usa solo resultados
+            # completados antes del lanzamiento y recurre al contexto del mercado.
             score, source = float(recent["score_recalls_bruto"].mean()), "global_cohortes_completadas_previas"
         else:
             score, source = np.nan, "sin_historial_previo"
@@ -509,7 +502,7 @@ def compute_brand_recall_history(
     lookback_years: int = 3,
     observation_window_years: int = OBSERVATION_WINDOW_YEARS,
 ) -> pd.DataFrame:
-    """Add the leakage-safe prior-three-completed-cohorts brand feature."""
+    """Añade la característica de marca de las tres cohortes previas completas sin fuga."""
 
     if lookback_years < 1:
         raise ValueError("lookback_years must be at least one.")
@@ -533,11 +526,9 @@ def build_gold_dataset(
     return_normalizer: bool = False,
     observation_index: pd.DataFrame | None = None,
 ) -> pd.DataFrame | tuple[pd.DataFrame, ReliabilityNormalizer]:
-    """Build the completed-cohort Gold dataset ready for temporal modelling.
-
-    Recent/incomplete cohorts are deliberately excluded here.  Use
-    :func:`build_inference_catalog` to expose them to a prediction interface
-    without transferring their own recall outcomes into model features.
+    """Construye Gold de cohortes completas para modelado temporal. Excluye cohortes
+    recientes/incompletas; build_inference_catalog permite consultarlas sin transferir sus
+    resultados propios a las características.
     """
 
     require_columns(
@@ -545,11 +536,11 @@ def build_gold_dataset(
         ("id_vehiculo_ano", "marca", "modelo", "ano_fabricacion", "categoria_vehiculo", "mediana_cilindros", "mediana_cv"),
         context="Processed technical data",
     )
-    # An unsuccessful fuzzy join is missing evidence, not evidence of zero
-    # recalls.  Keeping it would systematically reward records that could not
-    # be linked to NHTSA, so only authorised matches can enter the labelled
-    # Gold training layer.  The full technical catalogue remains available to
-    # the inference layer, where it can receive an explicit baseline fallback.
+    # Un cruce difuso fallido significa falta de evidencia, no cero recalls.
+    # Conservarlo premiaría sistemáticamente registros que no se pudieron
+    # vincular a NHTSA. Por ello solo cruces autorizados entran en la capa
+    # Gold etiquetada. El catálogo técnico completo sigue disponible para
+    # inferencia, donde puede recibir una referencia baseline explícita.
     authorised_ids = set(accepted_matches(matches)["id_vehiculo_ano"].astype(str))
     if observation_index is not None:
         require_columns(observation_index, ("nhtsa_vehicle_id", "query_status"), context="Observation evidence")
@@ -600,7 +591,7 @@ def build_gold_dataset(
     )
     normalizer = fit_reliability_normalizer(complete, train_end_year=train_end_year)
     gold = normalizer.transform(complete)
-    # Put the documented contract first, retaining diagnostics afterwards.
+    # Colocar primero el contrato documentado y después los diagnósticos.
     contract_columns = list(GOLD_REQUIRED_COLUMNS)
     extras = [column for column in gold.columns if column not in contract_columns]
     gold = gold[contract_columns + extras].sort_values("id_vehiculo_ano", kind="stable").reset_index(drop=True)
@@ -619,7 +610,9 @@ def build_inference_catalog(
     observation_window_years: int = OBSERVATION_WINDOW_YEARS,
     include_complete_cohorts: bool = False,
 ) -> pd.DataFrame:
-    """Build feature-only rows for recent launches without own-recall leakage."""
+    """Construye filas de características para lanzamientos recientes sin filtrar recalls
+    propios.
+    """
 
     require_columns(
         technical,
@@ -647,8 +640,8 @@ def build_inference_catalog(
         catalog["es_cohorte_completa"], "cohorte_completa_sin_etiqueta", "cohorte_incompleta_prediccion"
     )
     catalog["fecha_corte_datos"] = cutoff.isoformat()
-    # There is intentionally no score_recalls_bruto or indice_fiabilidad_100:
-    # those are labels of the selected vehicle and would leak to inference.
+    # No incluir score_recalls_bruto ni indice_fiabilidad_100 deliberadamente:
+    # son etiquetas del vehículo seleccionado y provocarían fuga en inferencia.
     forbidden = ["score_recalls_bruto", "indice_fiabilidad_100"]
     catalog = catalog.drop(columns=[column for column in forbidden if column in catalog.columns])
     return catalog.sort_values("id_vehiculo_ano", kind="stable").reset_index(drop=True)
@@ -664,11 +657,9 @@ def write_processed_sqlite(
     gold: pd.DataFrame | None = None,
     inference_catalog: pd.DataFrame | None = None,
 ) -> Path:
-    """Persist processed tables in SQLite for inspectable relational joins.
-
-    Tables are regenerated transactionally from their in-memory layer outputs;
-    source raw files are never changed.  The database is an intermediate cache,
-    not a replacement for the immutable raw JSON/CSV layer.
+    """Guarda tablas procesadas en SQLite para cruces inspeccionables. Se regeneran
+    transaccionalmente desde memoria; las fuentes no cambian. Es una caché intermedia, no un
+    sustituto de los originales JSON/CSV inmutables.
     """
 
     require_columns(technical, ("id_vehiculo_ano",), context="Technical specifications")
@@ -688,10 +679,10 @@ def write_processed_sqlite(
 
     with sqlite3.connect(database) as connection:
         for table_name, dataframe in tables.items():
-            # sqlite cannot bind pandas' nullable NA objects consistently on
-            # all supported pandas versions; it also cannot bind a pandas
-            # Timestamp directly. Convert datetime evidence to ISO text while
-            # retaining the original dataframe unchanged for Parquet/output.
+            # SQLite no admite de forma uniforme los objetos NA anulables de pandas
+            # en todas las versiones compatibles; tampoco acepta directamente
+            # Timestamp. Convertir fechas de evidencia a texto ISO sin modificar
+            # el dataframe original destinado a Parquet y a la salida.
             sqlite_frame = dataframe.copy().astype(object).map(_sqlite_value)
             sqlite_frame = sqlite_frame.where(pd.notna(sqlite_frame), None)
             sqlite_frame.to_sql(table_name, connection, if_exists="replace", index=False)
@@ -711,7 +702,7 @@ def write_processed_sqlite(
 
 
 def _sqlite_value(value: object) -> object:
-    """Convert pandas/numpy scalars to SQLite-compatible, auditable values."""
+    """Convierte escalares pandas/NumPy a valores auditables compatibles con SQLite."""
 
     if value is None or value is pd.NA:
         return None
@@ -723,7 +714,7 @@ def _sqlite_value(value: object) -> object:
 
 
 def write_normalizer_metadata(normalizer: ReliabilityNormalizer, path: str | Path) -> Path:
-    """Persist the train-only target scale parameters beside processed outputs."""
+    """Guarda parámetros de escala de entrenamiento junto a los datos procesados."""
 
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)

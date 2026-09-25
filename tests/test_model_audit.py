@@ -1,4 +1,4 @@
-"""Frozen audits must preserve serving state and fail closed on stale evidence."""
+"""La auditoría congelada conserva el servicio y rechaza evidencia obsoleta."""
 
 from copy import deepcopy
 

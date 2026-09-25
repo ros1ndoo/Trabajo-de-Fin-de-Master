@@ -1,4 +1,4 @@
-"""Immutable serving bundles activated only after validation; local trust only."""
+"""Paquetes de servicio inmutables activados tras validación; solo fuentes locales confiables."""
 
 from __future__ import annotations
 
@@ -32,10 +32,9 @@ def _verify(directory: Path, hashes: dict[str, str]) -> None:
 
 
 def publish_release(paths: ProjectPaths) -> str:
-    """Snapshot trusted local outputs; fail without changing the active pointer.
-
-    Hashes provide integrity, not authenticity: never publish an untrusted pickle.
-    The fitted target normalizer is embedded in the model and metrics.
+    """Captura resultados locales confiables; un fallo no cambia el puntero activo. Los hashes
+    aportan integridad, no autenticidad: nunca publicar pickle no confiable. El normalizador
+    ajustado está integrado en modelo y métricas.
     """
     releases = paths.root / "releases"
     releases.mkdir(parents=True, exist_ok=True)
@@ -67,7 +66,7 @@ def publish_release(paths: ProjectPaths) -> str:
             raise ValueError("Release catalog omits labelled identities")
         pd.testing.assert_frame_equal(reference[features].sort_index(),
                                       indexed.loc[reference.index, features].sort_index(), check_dtype=False)
-        # Detect a concurrent producer modifying any source during capture.
+        # Detectar modificaciones concurrentes de las fuentes durante la captura.
         if any(_digest((paths.root / name).read_bytes()) != hashes[name] for name in FILES):
             raise ValueError("Source files changed during publication; retry")
         atomic_json(directory / "manifest.json", {"files": hashes}, immutable=True)
@@ -76,10 +75,9 @@ def publish_release(paths: ProjectPaths) -> str:
 
 
 def serving_paths(paths: ProjectPaths) -> ProjectPaths:
-    """Pin each service instance to one validated immutable release.
-
-    Legacy projects without an active release continue using working outputs.
-    A corrupt active release fails closed rather than falling back silently.
+    """Fija cada servicio a una publicación inmutable validada. Proyectos antiguos sin
+    publicación usan archivos de trabajo. Una publicación corrupta falla explícitamente, sin
+    respaldo silencioso.
     """
     pointer = paths.root / "releases/active.json"
     if not pointer.exists():

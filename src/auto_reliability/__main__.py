@@ -1,4 +1,4 @@
-"""Enable ``python -m auto_reliability``."""
+"""Habilita python -m auto_reliability."""
 
 from .cli import main
 

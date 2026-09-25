@@ -1,4 +1,4 @@
-"""Describe observation evidence without manufacturing labels or predictions."""
+"""Describe observaciones sin fabricar etiquetas ni predicciones."""
 
 from __future__ import annotations
 
@@ -17,11 +17,10 @@ def observation_evidence(
     *,
     as_of_date: date | str,
 ) -> pd.DataFrame:
-    """Return one diagnostic row per technical identity, never an inferred zero.
-
-    Query states are recorded evidence from acquisition, not a new certification
-    of source completeness. Window counts are available only for existing Gold.
-    An absent query row is unknown unless the pipeline explicitly recorded failure.
+    """Devuelve un diagnóstico por identidad técnica, nunca un cero inferido. Los estados
+    proceden de la adquisición, no de una certificación nueva de cobertura. Los conteos de
+    ventana solo existen para Gold ya construido. Una consulta ausente es desconocida salvo
+    fallo explícitamente registrado.
     """
     key = "id_vehiculo_ano"
     for frame, column in ((technical, key), (matches, key), (gold, key),
@@ -46,8 +45,8 @@ def observation_evidence(
     confirmed = result.match_status.isin([
         "auto_accepted", "manual_accepted", "query_failed", "unverified_zero_result",
     ])
-    # A rejected candidate may have been queried for ANOTHER technical model.
-    # Its response cannot be transferred to this unresolved technical identity.
+    # Un candidato rechazado puede haber sido consultado para OTRO modelo técnico.
+    # Su respuesta no se puede atribuir a esta identidad técnica sin resolver.
     result["candidate_query_status"] = result.query_status
     result.loc[~confirmed, "query_status"] = "not_linked_to_verified_identity"
     result.loc[confirmed, "identity_status"] = "confirmed_by_matching"

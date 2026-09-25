@@ -1,4 +1,4 @@
-"""Regression tests for the scientific guarantees, not only the happy path."""
+"""Regresiones de garantías científicas, incluidos casos adversos."""
 
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ def test_test_outcomes_and_supplied_target_cannot_change_fitting(gold) -> None:
     np.testing.assert_allclose(first.artifact.predict(gold), second.artifact.predict(gold))
     assert first.artifact.metadata["dataset_fingerprint"] == dataset_fingerprint(gold)
     assert second.artifact.metadata["dataset_fingerprint"] != dataset_fingerprint(gold)
-    # Test is evaluated but cannot select or fit the model.
+    # El test se evalúa, pero no permite seleccionar ni ajustar el modelo.
     assert first.metrics["final_test"] != second.metrics["final_test"]
 
 
@@ -221,6 +221,6 @@ def test_forest_shapley_values_are_additive_and_use_one_batch(gold) -> None:
     assert {factor["coalitions_evaluated"] for factor in factors} == {32}
     assert all(factor["baseline_score"] == pytest.approx(artifact.predict(references)[0]) for factor in factors)
     assert all(factor["causal"] is False for factor in factors)
-    # A feature identical to the background is a dummy player with zero value.
+    # Una característica idéntica al fondo es un jugador sin contribución.
     matching_reference = explain_prediction(artifact, references, top_n=5)
     assert all(factor["contribution"] == 0 for factor in matching_reference)

@@ -1,4 +1,4 @@
-"""Independent inventory must not fabricate power, identities or recall labels."""
+"""El inventario independiente no debe fabricar potencia, identidades ni etiquetas."""
 
 import io
 import zipfile

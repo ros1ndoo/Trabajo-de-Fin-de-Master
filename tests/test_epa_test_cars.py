@@ -1,4 +1,4 @@
-"""The same EPA configuration can have many test-cycle rows, not many trims."""
+"""Varios ciclos EPA de una configuración no equivalen a varios acabados."""
 
 import pandas as pd
 import pytest

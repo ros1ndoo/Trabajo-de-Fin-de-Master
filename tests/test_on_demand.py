@@ -1,4 +1,4 @@
-"""Prediction orchestration must acquire evidence without using its outcome."""
+"""La inferencia debe obtener evidencia sin usar su resultado como predictor."""
 from pathlib import Path
 
 import pandas as pd

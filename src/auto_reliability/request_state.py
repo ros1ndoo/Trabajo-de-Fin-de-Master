@@ -1,4 +1,4 @@
-"""Persistent operational state, separate from immutable API evidence."""
+"""Estado operativo persistente separado de la evidencia API inmutable."""
 
 from __future__ import annotations
 
@@ -14,11 +14,10 @@ from urllib.parse import urlsplit
 
 
 class RequestState:
-    """Track host cooldowns and latest query failures across daily snapshots.
-
-    The caller holds the shared request lock while checking and updating state.
-    Transactions preserve cooldown and failure state together. This is not an
-    automatic retry worker: recoverable entries are retried by explicit queries.
+    """Registra esperas del servidor y fallos entre instantáneas diarias. El llamante mantiene
+    el bloqueo compartido mientras consulta y actualiza; las transacciones conservan
+    conjuntamente espera y fallo. No es un trabajador de reintentos automáticos: se
+    reintenta mediante consultas explícitas.
     """
 
     def __init__(self, path: Path) -> None:
@@ -36,7 +35,7 @@ class RequestState:
         return connection
 
     def remaining(self, endpoint: str, now: float) -> float:
-        """Return persisted minimum server wait without sleeping or networking."""
+        """Devuelve la espera mínima persistida sin dormir ni acceder a la red."""
         with closing(self._connect()) as connection:
             row = connection.execute("SELECT until FROM cooldowns WHERE host=?", (urlsplit(endpoint).netloc,)).fetchone()
         if row is None:
@@ -49,7 +48,7 @@ class RequestState:
     def record(self, endpoint: str, params: Mapping[str, object] | None, *, now: float,
                state: str, status: int | None, attempts: int, delay: float = 0,
                error_type: str | None = None) -> None:
-        """Record a result and extend (never shorten) a server cooldown."""
+        """Registra un resultado y amplía, nunca reduce, la espera del servidor."""
         if state not in {"succeeded", "retryable", "permanent_failure"} or attempts < 0:
             raise ValueError("Invalid request state")
         if not math.isfinite(now) or not math.isfinite(delay) or delay < 0:
@@ -69,7 +68,9 @@ class RequestState:
                     (urlsplit(endpoint).netloc, now + delay))
 
     def failures(self) -> list[dict[str, Any]]:
-        """Return pending failures for operational inspection, never ML labels."""
+        """Devuelve fallos pendientes para inspección operativa, nunca etiquetas de
+        aprendizaje.
+        """
         with closing(self._connect()) as connection:
             connection.row_factory = sqlite3.Row
             rows = connection.execute("SELECT * FROM requests WHERE state != 'succeeded' ORDER BY updated").fetchall()

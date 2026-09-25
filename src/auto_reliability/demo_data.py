@@ -1,8 +1,6 @@
-"""Deterministic synthetic data for an honest, runnable product demonstration.
-
-The demo is intentionally labelled synthetic. It validates the end-to-end
-software path when the licensed CooperUnion CSV has not yet been placed in
-``data/raw``; it must never be presented as NHTSA evidence.
+"""Datos sintéticos deterministas para una demostración explícita. Validan el recorrido del
+software cuando falta el CSV CooperUnion en data/raw; nunca se presentan como evidencia
+NHTSA.
 """
 
 from __future__ import annotations
@@ -43,14 +41,14 @@ _FAMILIES: tuple[DemoVehicleFamily, ...] = (
 
 
 def make_demo_catalog(*, seed: int = 73, through_year: int = CURRENT_YEAR) -> pd.DataFrame:
-    """Return a stable catalog with labelled and recent inference-only cohorts."""
+    """Devuelve un catálogo estable con cohortes etiquetadas y recientes para inferencia."""
 
     rng = np.random.default_rng(seed)
     records: list[dict[str, object]] = []
     if through_year < MIN_MODEL_YEAR + OBSERVATION_WINDOW_YEARS:
         raise ValueError("The demo needs at least one completed three-year cohort.")
-    # At the beginning of `through_year`, cohorts through year - 3 have
-    # completed their three-calendar-year observation period.
+    # Al comenzar through_year, las cohortes hasta año - 3 ya han
+    # completado su período de observación de tres años naturales.
     last_complete_year = through_year - OBSERVATION_WINDOW_YEARS
     for year in range(MIN_MODEL_YEAR, through_year + 1):
         technology_trend = max(0.0, (year - MIN_MODEL_YEAR) / 30)
@@ -83,8 +81,8 @@ def make_demo_catalog(*, seed: int = 73, through_year: int = CURRENT_YEAR) -> pd
             )
 
     frame = pd.DataFrame(records)
-    # Only the last three *matured* cohorts are available at a launch. Using
-    # the final recall totals of y-1 or y-2 here would expose future events.
+    # Solo las tres últimas cohortes maduras están disponibles al lanzamiento.
+    # Usar aquí resultados finales de y-1 o y-2 revelaría eventos futuros.
     frame = frame.sort_values(["marca", "ano_fabricacion", "modelo"]).reset_index(drop=True)
     histories: list[float] = []
     for _, row in frame.iterrows():
@@ -101,10 +99,10 @@ def make_demo_catalog(*, seed: int = 73, through_year: int = CURRENT_YEAR) -> pd
         )
     frame["hist_fiabilidad_marca"] = histories
 
-    # The UI semantics are intentionally unambiguous: high score = lower
-    # historically observed recall propensity. Even the synthetic fixture
-    # fits this target scale on the documented training horizon only, so it
-    # cannot conceal a leakage bug during end-to-end tests.
+    # La interfaz mantiene un significado inequívoco: mayor índice equivale
+    # a menor propensión histórica observada a recalls. Incluso los datos
+    # sintéticos ajustan la escala solo en el horizonte de entrenamiento,
+    # para no ocultar fugas de información en pruebas de extremo a extremo.
     complete = frame["cohorte_completa"]
     train_reference = frame.loc[complete & frame["ano_fabricacion"].le(2018)].copy()
     global_mean = float(train_reference["score_recalls_bruto"].mean())
@@ -120,14 +118,14 @@ def make_demo_catalog(*, seed: int = 73, through_year: int = CURRENT_YEAR) -> pd
     z = (frame.loc[complete, "score_recalls_bruto"] - segment_mean) / segment_std
     frame["indice_fiabilidad_100"] = np.nan
     frame.loc[complete, "indice_fiabilidad_100"] = (50 - (z * 10)).clip(0, 100)
-    # Do not expose synthetic future outcomes to downstream inference code.
+    # No exponer resultados sintéticos futuros al código de inferencia.
     frame.loc[~complete, "score_recalls_bruto"] = np.nan
     frame["indice_fiabilidad_100"] = frame["indice_fiabilidad_100"].round(2)
     return frame.sort_values(["marca", "modelo", "ano_fabricacion"]).reset_index(drop=True)
 
 
 def write_demo_catalog(paths: ProjectPaths) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Persist labelled gold and full inference catalog without overwriting docs."""
+    """Conserva Gold etiquetado y catálogo completo sin sobrescribir documentación."""
 
     paths.ensure_runtime_directories()
     for destination in (paths.gold_path, paths.inference_catalog_path):

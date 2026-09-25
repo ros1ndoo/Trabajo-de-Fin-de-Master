@@ -22,7 +22,7 @@ def test_nullable_text_and_fingerprint_are_stable_across_storage_types():
     frame = pd.DataFrame([_row(2016), _row(2017)])
     other = frame.iloc[::-1].copy()
     other["ano_fabricacion"] = other.ano_fabricacion.astype(float)
-    other["indice_fiabilidad_100"] = 99.  # Display target is not the model's train-fit scale.
+    other["indice_fiabilidad_100"] = 99.  # El objetivo mostrado no es la escala ajustada en entrenamiento.
     assert dataset_fingerprint(frame) == dataset_fingerprint(other)
     other.loc[:, "score_recalls_bruto"] = 7.
     assert dataset_fingerprint(frame) != dataset_fingerprint(other)

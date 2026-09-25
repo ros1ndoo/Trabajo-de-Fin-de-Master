@@ -1,4 +1,4 @@
-"""Shared cooldown survives client/snapshot changes without network retries."""
+"""La espera compartida persiste al cambiar cliente o instantánea, sin reintentos de red."""
 
 import sqlite3
 from contextlib import closing
@@ -49,7 +49,7 @@ def test_permanent_failure_does_not_cooldown_other_vehicles(tmp_path):
 
 
 def test_corrupt_operational_database_fails_closed(tmp_path):
-    # Directory instead of a database simulates inaccessible operational storage.
+    # Un directorio en lugar de una base simula almacenamiento operativo inaccesible.
     (tmp_path / ".nhtsa-operations.sqlite").mkdir()
     session = Session([])
     client = NHTSARecallClient(tmp_path / "2026-09-19", session=session, request_delay_seconds=0)

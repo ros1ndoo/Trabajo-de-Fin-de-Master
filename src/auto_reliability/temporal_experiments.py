@@ -1,4 +1,4 @@
-"""Frozen retrospective windows; no serving-model publication or test tuning."""
+"""Ventanas retrospectivas congeladas, sin publicación de modelos ni ajuste sobre test."""
 
 from __future__ import annotations
 
@@ -19,21 +19,21 @@ from .storage import atomic_json
 
 @dataclass(frozen=True)
 class ExperimentWindow:
-    """Calendar cutoffs before maturity embargo, including a bounded test end."""
+    """Cortes de calendario previos al embargo de madurez, con fin de test acotado."""
 
     train_end: int
     validation_end: int
     test_end: int
 
 
-# Fixed before first execution. Test calendar ranges do not overlap; later
-# training may use earlier outcomes, as in expanding-window evaluation.
+# Fijado antes de la primera ejecución. Los períodos de test no se solapan;
+# el entrenamiento posterior puede usar resultados previos en una ventana expansiva.
 WINDOWS = (ExperimentWindow(2001, 2005, 2008), ExperimentWindow(2004, 2008, 2011),
            ExperimentWindow(2007, 2011, 2017))
 
 
 def experiment_protocol(windows: tuple[ExperimentWindow, ...] = WINDOWS) -> dict[str, Any]:
-    """Validate chronological, non-overlapping test intervals."""
+    """Valida intervalos de test cronológicos y no solapados."""
     previous_test_end: int | None = None
     if not windows:
         raise ValueError("At least one window is required")
@@ -51,10 +51,9 @@ def experiment_protocol(windows: tuple[ExperimentWindow, ...] = WINDOWS) -> dict
 
 
 def run_temporal_experiments(paths: ProjectPaths, *, windows: tuple[ExperimentWindow, ...] = WINDOWS) -> Path:
-    """Publish protocol before training and immutable, isolated results after it.
-
-    A failed or adaptively changed window is recorded explicitly, not silently
-    relabelled as a successful fixed-cutoff evaluation. Serving files stay intact.
+    """Publica el protocolo antes del entrenamiento y resultados aislados inmutables después.
+    Registra explícitamente ventanas fallidas o adaptadas; no las presenta como evaluaciones
+    de cortes fijos correctas. Conserva intactos los archivos de servicio.
     """
     gold = pd.read_parquet(paths.gold_path)
     protocol = {**experiment_protocol(windows), "dataset_fingerprint": dataset_fingerprint(gold)}
@@ -65,7 +64,7 @@ def run_temporal_experiments(paths: ProjectPaths, *, windows: tuple[ExperimentWi
     if json.loads(protocol_path.read_text(encoding="utf-8")) != protocol:
         raise ValueError("Existing experiment protocol differs")
     destination = directory / "results.json"
-    # Never rerun a frozen experiment silently; preserve its evidence.
+    # Nunca repetir silenciosamente un experimento congelado; preservar su evidencia.
     if destination.exists():
         existing = json.loads(destination.read_text(encoding="utf-8"))
         if existing.get("protocol") != protocol:

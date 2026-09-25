@@ -1,7 +1,6 @@
-"""EPA test-car power evidence, isolated from production model specifications.
-
-Rows are tests, not sales configurations. Preserve rated horsepower as given;
-do not infer total hybrid power, metric CV, body style, or all-trim coverage.
+"""Evidencia de potencia de ensayos EPA aislada del modelo productivo. Las filas son pruebas,
+no versiones comerciales. Conserva la potencia declarada; no infiere potencia híbrida total,
+CV, carrocería ni cobertura de todas las versiones.
 """
 
 from __future__ import annotations
@@ -45,7 +44,7 @@ COLUMNS = {
 
 
 def normalize_tests(source: pd.DataFrame, year: int) -> pd.DataFrame:
-    """Retain every test and flag unusable power; never manufacture trim keys."""
+    """Conserva cada ensayo y señala potencia inutilizable sin fabricar claves de versiones."""
     require_columns(source, tuple(COLUMNS), context="EPA test car workbook")
     frame = source[list(COLUMNS)].rename(columns=COLUMNS).copy()
     frame.insert(0, "source_excel_row", np.arange(len(frame)) + 2)
@@ -61,14 +60,14 @@ def normalize_tests(source: pd.DataFrame, year: int) -> pd.DataFrame:
     frame["rated_hp"] = power.where(np.isfinite(power) & power.gt(0))
     frame["power_status"] = np.where(frame.rated_hp.notna(), "source_rated_hp", "missing_or_invalid")
     frame["prediction_eligible"] = False
-    # Keep mixed original cell types as strings for stable Parquet schemas.
+    # Conservar tipos de celdas mixtos como texto para estabilizar el esquema Parquet.
     for column in ("rated_hp_original", "cylinders_or_rotors_original"):
         frame[column] = frame[column].astype("string")
     return frame.reset_index(drop=True)
 
 
 def read_tests(path: Path, year: int) -> pd.DataFrame:
-    """Read data-only cells; cap expanded XLSX size before parser allocation."""
+    """Lee valores de celdas y limita tamaño XLSX expandido antes de asignar memoria al lector."""
     with zipfile.ZipFile(path) as archive:
         if sum(entry.file_size for entry in archive.infolist()) > 128 * 1024 * 1024:
             raise DataSourceError("EPA workbook exceeds expanded size limit.")
@@ -76,10 +75,9 @@ def read_tests(path: Path, year: int) -> pd.DataFrame:
 
 
 def configuration_evidence(tests: pd.DataFrame) -> pd.DataFrame:
-    """Deduplicate cycles by test vehicle/configuration, exposing contradictions.
-
-    Even an unambiguous configuration is not a representative median for the
-    full commercial model. Conflicting horsepower stays missing for review.
+    """Deduplica ciclos por vehículo/configuración y expone contradicciones. Una configuración
+    inequívoca no representa la mediana comercial completa; potencias contradictorias quedan
+    ausentes para revisión.
     """
     keys = ["year", "make", "model", "test_vehicle_id", "configuration"]
     result = tests.groupby(keys, as_index=False, dropna=False).agg(
@@ -96,10 +94,9 @@ def configuration_evidence(tests: pd.DataFrame) -> pd.DataFrame:
 
 
 def acquire_test_cars(paths: ProjectPaths, years: list[int]) -> list[dict[str, object]]:
-    """Download allowlisted releases with immutable manifests; retain partial success.
-
-    No Gold promotion or automatic cross-source transfer occurs. A rerun checks
-    hashes and reuses prior successful years instead of downloading again.
+    """Descarga publicaciones autorizadas con manifiestos inmutables y conserva éxitos
+    parciales. No promueve a Gold ni transfiere valores automáticamente entre fuentes. Al
+    repetir, verifica hashes y reutiliza años descargados.
     """
     if not years or set(years) - YEAR_URLS.keys():
         raise ValueError("Supported EPA test years: 2018–2026.")

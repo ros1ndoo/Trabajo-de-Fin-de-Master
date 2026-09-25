@@ -1,4 +1,4 @@
-"""Stored observation evidence is distinct from predictions and live queries."""
+"""La observación almacenada se distingue de predicción y consulta actual."""
 
 import pandas as pd
 import pytest

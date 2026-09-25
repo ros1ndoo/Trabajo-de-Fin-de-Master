@@ -48,7 +48,7 @@ line-length = 100
 target-version = "py310"
 
 [tool.ruff.lint]
-# The product deliberately degrades to a baseline/UI diagnostic when optional
-# model, parquet, or report artefacts fail at runtime. Those boundary catches
-# are intentional and are covered by integration tests.
+# El producto recurre a un baseline o diagnóstico cuando fallan artefactos
+# opcionales del modelo, Parquet o informes. Estas capturas de excepciones
+# en los límites son deliberadas y están cubiertas por pruebas de integración.
 ignore = ["BLE001", "S112"]

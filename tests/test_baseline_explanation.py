@@ -1,4 +1,4 @@
-"""Baseline explanations describe the fitted lookup, never unused features."""
+"""Las explicaciones describen el grupo ajustado, nunca características no utilizadas."""
 
 import pandas as pd
 import pytest
@@ -28,7 +28,7 @@ def test_group_explanation_reconstructs_actual_score(make, segment, level):
     assert explain_prediction(artifact, changed) == factors
     narrative = summarize_attributions(factors)
     assert "no intervienen" in narrative
-    # Enabling an optional LLM must not turn a group difference into an individual effect.
+    # Activar un LLM opcional no debe convertir diferencias de grupo en efectos individuales.
     assert build_grounded_narrative(factors, narrative, model="enabled")["text"] == narrative
     table = _factor_table({"factores": factors})
     assert table.iloc[0]["Valor"] != "—"

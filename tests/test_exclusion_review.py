@@ -1,4 +1,4 @@
-"""Controlled responses test evidence semantics, not real-world zero claims."""
+"""Las respuestas controladas prueban semántica de evidencia, no ceros reales."""
 
 import json
 from types import SimpleNamespace

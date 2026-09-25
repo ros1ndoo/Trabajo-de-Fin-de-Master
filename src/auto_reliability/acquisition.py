@@ -1,4 +1,4 @@
-"""Download the original CooperUnion release without credentials or mirrors."""
+"""Descarga la publicación original de CooperUnion sin credenciales ni servidores espejo."""
 
 from __future__ import annotations
 
@@ -20,11 +20,9 @@ MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024
 
 
 def download_cooperunion(raw_directory: Path, *, session=None) -> Path:
-    """Persist an immutable CSV and provenance manifest from the official ZIP.
-
-    No archive paths are extracted. Only the single CSV member is read, with
-    size and schema checks before any destination is created. Existing source
-    bytes are reused, never overwritten.
+    """Conserva un CSV inmutable y su manifiesto de procedencia desde el ZIP oficial. No extrae
+    rutas del archivo: lee únicamente el CSV y verifica tamaño y esquema antes de crear
+    destinos. Reutiliza los bytes existentes sin sobrescribirlos.
     """
     destination = Path(raw_directory) / "cooperunion_car_features.csv"
     if destination.exists():

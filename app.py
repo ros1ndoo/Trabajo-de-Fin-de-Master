@@ -1,6 +1,6 @@
-"""Streamlit entry point for the AutoReliability dashboard.
+"""Punto de entrada Streamlit de la interfaz AutoReliability.
 
-Run with:
+Ejecutar con:
     streamlit run app.py
 """
 

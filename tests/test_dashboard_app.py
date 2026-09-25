@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import pandas as pd
+import pytest
 from streamlit.testing.v1 import AppTest
 
 from auto_reliability.dashboard import PLACEHOLDER
@@ -17,9 +18,11 @@ class DashboardServiceStub:
     error: bool = False
     live_error: bool = False
     mae: float | None = 6.5
+    score: float = 62.5
     live_count: int = 1
     ingestion_warnings: tuple[str, ...] = ()
     inventory_alignment: dict | None = None
+    exclusion_review: dict | None = None
     live_calls: list[tuple[str, str, int]] = field(default_factory=list)
 
     def status(self):
@@ -28,6 +31,7 @@ class DashboardServiceStub:
             "model_available": True, "technical_year_max": 2017,
             "ingestion_warnings": self.ingestion_warnings,
             "inventory_alignment": self.inventory_alignment,
+            "exclusion_review": self.exclusion_review,
         }
 
     def load_catalog(self):
@@ -49,7 +53,7 @@ class DashboardServiceStub:
             raise InsufficientEvidenceError("Controlled missing-history example")
         return {
             "marca": marca, "modelo": modelo, "ano_fabricacion": ano_fabricacion,
-            "prediccion_indice_100": 62.5, "mae": self.mae, "fuente_demo": self.demo,
+            "prediccion_indice_100": self.score, "mae": self.mae, "fuente_demo": self.demo,
             "modelo_usado": "Ridge", "mensaje": "Consulta retrospectiva: no es una predicción realizada al lanzamiento.",
             "factores": [{"feature": "mediana_cv", "value": 250, "contribution": 0.0}],
         }
@@ -109,14 +113,28 @@ def _select_official(app):
     return app
 
 
-def test_complementary_inventory_is_displayed_without_expanding_predictor():
-    app = _start(DashboardServiceStub(inventory_alignment={
-        "variants": 36431, "source_names": 22140, "linked_source_names": 4570,
-        "epa_snapshot_date": "2026-09-18", "policy_version": "epa-nhtsa-names-v1",
-    }))
-    assert any("4570 de 22140" in item.value for item in app.markdown)
-    assert any("no amplía todavía el predictor" in item.value for item in app.info)
+def test_internal_reports_are_hidden_without_hiding_coverage_warnings():
+    app = _start(DashboardServiceStub(
+        inventory_alignment={
+            "variants": 36431, "source_names": 22140, "linked_source_names": 4570,
+            "epa_snapshot_date": "2026-09-18", "policy_version": "epa-nhtsa-names-v1",
+        },
+        exclusion_review={
+            "excluded_rows": 854,
+            "independent_identity_counts": {"exact_independent_identity": 380},
+            "query_counts": {"campaigns_returned_review_required": 40, "query_failed": 340},
+        },
+        ingestion_warnings=("Muestra limitada; posible sesgo de selección.",),
+    ))
+    labels = {item.label for item in app.expander}
+    assert "Inventario complementario EPA/NHTSA · en validación" not in labels
+    assert "Revisión de exclusiones · evidencia independiente" not in labels
+    assert not any("4570 de 22140" in item.value for item in app.markdown)
+    assert not any("854 excluidos" in item.value for item in app.markdown)
+    assert not any("no amplía todavía el predictor" in item.value for item in app.info)
     assert any("hasta 2017" in item.value for item in app.warning)
+    assert any("sesgo de selección" in item.value for item in app.warning)
+    assert any("Datos de prueba controlados" in item.value for item in app.caption)
     assert not app.exception
 
 
@@ -155,10 +173,38 @@ def test_unverified_empty_official_response_is_not_presented_as_zero_risk():
     assert not app.exception
 
 
-def test_invalid_complementary_report_does_not_break_predictor():
-    app = _start(DashboardServiceStub(inventory_alignment={"error": "Informe no válido"}))
-    assert any("Informe no válido" in item.value for item in app.warning)
+def test_internal_report_errors_are_hidden_without_breaking_predictor():
+    app = _estimate(_select(_start(DashboardServiceStub(
+        inventory_alignment={"error": "Inventario no válido"},
+        exclusion_review={"error": "Revisión no válida"},
+        ingestion_warnings=("Muestra limitada; posible sesgo de selección.",),
+    ))))
+    labels = {item.label for item in app.expander}
+    assert "Inventario complementario EPA/NHTSA · en validación" not in labels
+    assert "Revisión de exclusiones · evidencia independiente" not in labels
+    assert not any("Inventario no válido" in item.value for item in app.warning)
+    assert not any("Revisión no válida" in item.value for item in app.warning)
+    assert any("hasta 2017" in item.value for item in app.warning)
+    assert any("sesgo de selección" in item.value for item in app.warning)
+    assert app.session_state["ar_current_result"]["prediccion_indice_100"] == 62.5
     assert not app.exception
+
+
+@pytest.mark.parametrize("score", [30.0, 62.5, 85.0])
+def test_result_omits_score_bands_but_keeps_score_and_interpretation(score):
+    app = _estimate(_select(_start(DashboardServiceStub(score=score))))
+    rendered_text = "\n".join(
+        str(item.value)
+        for elements in (app.markdown, app.caption, app.info, app.warning, app.success)
+        for item in elements
+    )
+    assert "tramo" not in rendered_text.casefold()
+    assert "45/70" not in rendered_text
+    assert "convenciones visuales" not in rendered_text
+    assert "Cómo interpretar este resultado" in rendered_text
+    assert "No mide directamente la fiabilidad mecánica general" in rendered_text
+    assert f"{score:.1f}" in rendered_text
+    assert app.session_state["ar_current_result"]["prediccion_indice_100"] == score
 
 
 def test_cascading_selectors_estimation_comparison_and_reset():

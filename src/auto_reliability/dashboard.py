@@ -778,12 +778,14 @@ def _inject_styles(st: Any) -> None:
     )
 
 
-def _score_status(score: float) -> tuple[str, str, str]:
+def _score_color(score: float) -> str:
+    """Conserva el color visual del indicador sin asignar etiquetas de tramo."""
+
     if score >= 70:
-        return "#35d49a", "Tramo superior del índice", "Los cortes 45/70 son convenciones visuales, no umbrales de seguridad validados."
+        return "#35d49a"
     if score >= 45:
-        return "#f8b84e", "Tramo intermedio del índice", "Los cortes 45/70 son convenciones visuales, no umbrales de seguridad validados."
-    return "#fb7185", "Tramo inferior del índice", "Los cortes 45/70 son convenciones visuales, no umbrales de seguridad validados."
+        return "#f8b84e"
+    return "#fb7185"
 
 
 def _mae_label(value: Any) -> str:
@@ -815,12 +817,18 @@ def _render_score_ring(st: Any, result: Mapping[str, Any] | None, *, status: Map
 
     if result is None:
         score, color = 0.0, "#4ea1ff"
-        heading = "Tu estimación aparecerá aquí"
+        heading_html = (
+            "<strong style='color:#4ea1ff;font-size:1rem'>Tu estimación aparecerá aquí</strong>"
+        )
         method, mae = "Selecciona un vehículo", "No disponible"
-        caption = "El índice se muestra en una escala de 0 a 100."
+        caption_html = (
+            "<p class='ar-score-caption' style='margin:.9rem 0 0'>"
+            "El índice se muestra en una escala de 0 a 100.</p>"
+        )
     else:
         score = _safe_float(result.get("prediccion_indice_100"), 0.0) or 0.0
-        color, heading, caption = _score_status(score)
+        color = _score_color(score)
+        heading_html = caption_html = ""
         method = _text(result.get("modelo_usado"), "Modelo predictivo")
         mae = _mae_label(result.get("mae"))
     value = f"{score:.1f}" if result is not None else "—"
@@ -837,12 +845,12 @@ def _render_score_ring(st: Any, result: Mapping[str, Any] | None, *, status: Map
           <div class="ar-ring" style="--score:{score:.2f};--ring-color:{color}"><div class="ar-ring-inner">
             <div class="ar-ring-value">{value}</div><div class="ar-ring-unit">sobre 100</div>
           </div></div>
-          <strong style="color:{color};font-size:1rem">{escape(heading)}</strong>
+          {heading_html}
           <div class="ar-score-band" style="--score:{score:.2f};--ring-color:{color}"><span class="ar-score-marker"></span></div>
           <div class="ar-score-caption">0 = mayor propensión · 100 = menor propensión</div>
           <div class="ar-stat-line"><span>Error esperado (MAE)</span><strong>{escape(mae)}</strong></div>
           <div class="ar-stat-line"><span>Método</span><strong>{escape(method)}</strong></div>
-          <p class="ar-score-caption" style="margin:.9rem 0 0">{escape(caption)}</p>{demo_note}
+          {caption_html}{demo_note}
         </div>
         """,
         unsafe_allow_html=True,
@@ -1138,9 +1146,7 @@ def _has_reporting_hook() -> bool:
 
 
 def _render_result(st: Any, service: Any | None, result: Mapping[str, Any]) -> None:
-    score = _safe_float(result.get("prediccion_indice_100"), 0.0) or 0.0
     mae = _safe_float(result.get("mae"))
-    color, status, caption = _score_status(score)
     vehicle_name = f"{_text(result.get('marca'))} {_text(result.get('modelo'))} {_text(result.get('ano_fabricacion'))}"
 
     st.markdown("<div class='ar-section-title'>Resultado de la estimación</div>", unsafe_allow_html=True)
@@ -1205,8 +1211,6 @@ def _render_result(st: Any, service: Any | None, result: Mapping[str, Any]) -> N
         if market_history:
             st.caption("Sin historial suficiente de esta marca: se utiliza la referencia del mercado disponible.")
 
-    st.markdown(f"<p style='color:{color}; font-weight:700; margin:.8rem 0 .15rem'>{escape(status)}</p>", unsafe_allow_html=True)
-    st.caption(caption)
     st.markdown(
         "<div class='ar-disclaimer'><strong>Cómo interpretar este resultado.</strong> "
         "Es un proxy basado en registros oficiales de recalls de seguridad de la NHTSA. "
@@ -1265,39 +1269,6 @@ def _coverage_notice(st: Any, status: Mapping[str, Any], catalog: Any = None) ->
         )
     if message and not _as_bool(status.get("demo_mode")):
         st.caption(f"Estado de datos: {message}")
-    alignment = status.get("inventory_alignment")
-    if isinstance(alignment, Mapping):
-        with st.expander("Inventario complementario EPA/NHTSA · en validación"):
-            if alignment.get("error"):
-                st.warning(_text(alignment["error"]))
-            else:
-                st.write(
-                    f"{alignment.get('variants')} versiones EPA; "
-                    f"{alignment.get('linked_source_names')} de {alignment.get('source_names')} "
-                    "nombres marca-modelo-año alineados con el catálogo NHTSA."
-                )
-                st.caption(f"Snapshot EPA: {alignment.get('epa_snapshot_date')} · "
-                           f"Regla de cruce: {alignment.get('policy_version')}")
-                st.info("Este inventario no amplía todavía el predictor: falta potencia y validar "
-                        "las categorías. Coincidir en nombre no acredita aplicabilidad a cada "
-                        "versión o VIN; no encontrar una coincidencia no significa cero recalls.")
-    review = status.get("exclusion_review")
-    if isinstance(review, Mapping):
-        with st.expander("Revisión de exclusiones · evidencia independiente"):
-            if review.get("error"):
-                st.warning(_text(review["error"]))
-            else:
-                identities = review.get("independent_identity_counts", {})
-                queries = review.get("query_counts", {})
-                st.write(f"{review.get('excluded_rows')} excluidos; "
-                         f"{identities.get('exact_independent_identity', 0)} con identidad exacta en EPA.")
-                st.write(f"Consultas con campañas: {queries.get('campaigns_returned_review_required', 0)} · "
-                         f"Respuestas vacías sin cobertura acreditada: {queries.get('empty_response_identity_only', 0)} · "
-                         f"Fallidas: {queries.get('query_failed', 0)} · "
-                         f"Sin consultar: {queries.get('not_queried', 0)}.")
-                st.info("Investigación separada del predictor: estas consultas no han añadido etiquetas a Gold. "
-                        "La identidad EPA no acredita equivalencia de nombres con NHTSA; un error o una respuesta "
-                        "vacía no demuestran ausencia de recalls ni fiabilidad.")
     warnings = status.get("ingestion_warnings", ())
     if isinstance(warnings, Sequence) and not isinstance(warnings, (str, bytes)):
         messages = [item for item in dict.fromkeys(_text(item, "") for item in warnings) if item]

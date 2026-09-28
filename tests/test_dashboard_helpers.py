@@ -6,6 +6,7 @@ import pytest
 from auto_reliability.dashboard import (
     _factor_table,
     _feature_context,
+    _narrative,
     make_radar_figure,
     normalize_catalog,
     normalize_prediction,
@@ -23,6 +24,20 @@ def test_missing_attributions_do_not_turn_technical_context_into_explanations():
     assert table.iloc[0]["Factor"] == "Explicación no disponible"
     assert "no entregó atribuciones" in table.iloc[0]["Influencia estimada"]
     assert "Potencia" not in table.to_string()
+
+
+@pytest.mark.parametrize("baseline", [True, False])
+def test_missing_narrative_does_not_invent_predictive_features(baseline):
+    result = {"es_baseline": baseline, "vehicle_features": {"Potencia": 300}}
+    assert "no entregó una explicación verificable" in _narrative(result)
+    assert "se fundamenta" not in _narrative(result)
+    exported = summary_frame(result)
+    assert exported.iloc[0]["explicacion_factores"] == _narrative(result)
+
+
+def test_verified_narrative_is_preserved():
+    explanation = "Referencia del grupo ford / suv respecto a la media global."
+    assert _narrative({"explicacion_factores": explanation}) == explanation
 
 
 def test_dashboard_catalog_and_radar_helpers_are_renderable() -> None:

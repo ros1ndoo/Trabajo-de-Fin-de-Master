@@ -636,9 +636,9 @@ def _narrative(result: Mapping[str, Any]) -> str:
     if isinstance(explanation, str) and explanation.strip():
         return explanation.strip()
     return (
-        "La estimación se fundamenta únicamente en especificaciones disponibles antes del lanzamiento "
-        "y en el historial previo de recalls de la marca. La comparación describe patrones del "
-        "dataset; no demuestra una relación causal."
+        "El servicio no entregó una explicación verificable de esta estimación. "
+        "El perfil técnico y el historial se muestran como contexto descriptivo; "
+        "no deben interpretarse como atribuciones del modelo ni como causas de averías."
     )
 
 

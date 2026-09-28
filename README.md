@@ -13,7 +13,7 @@ La aplicación, desarrollada con Streamlit, permite:
 
 - Consultar vehículos por marca, modelo y año.
 - Obtener un índice histórico de propensión a recalls.
-- Visualizar características técnicas, historial del fabricante y factores explicativos.
+- Consultar la referencia de grupo que produce la estimación. El perfil técnico y el historial se muestran como contexto separado, no como factores del baseline.
 - Comparar los resultados de dos vehículos.
 - Consultar campañas oficiales de recalls de la NHTSA.
 - Exportar los resultados en CSV y PDF.
@@ -36,7 +36,7 @@ El predictor publicado utiliza datos técnicos de vehículos comprendidos entre 
 
 ### Construcción del índice
 
-La variable objetivo se construye a partir de las campañas de recalls registradas durante los tres primeros años-modelo de cada vehículo.
+La variable objetivo se construye a partir de las campañas de recalls registradas en el año-modelo y los dos años calendario siguientes. Es una ventana común de observación, no los primeros 36 meses de vida de cada unidad.
 
 Las campañas reciben una ponderación heurística según las palabras clave de sus descripciones:
 
@@ -48,7 +48,7 @@ Las campañas reciben una ponderación heurística según las palabras clave de 
 
 La suma ponderada se normaliza respecto a las estadísticas del segmento, calculadas sobre los datos de entrenamiento, para obtener un índice de 0 a 100.
 
-**Una puntuación mayor indica una menor carga histórica estimada de recalls.** No representa un porcentaje de fiabilidad ni una probabilidad individual de avería.
+**Una puntuación mayor representa una referencia de grupo más favorable en el indicador de recalls construido.** La normalización por categoría impide interpretar cualquier diferencia entre categorías como una diferencia directa en número de campañas. No representa un porcentaje de fiabilidad, una probabilidad individual de avería ni demuestra que un coche sea una mejor compra.
 
 ### Entrenamiento y selección
 
@@ -58,23 +58,35 @@ Se han evaluado tres alternativas:
 - Ridge Regression.
 - Random Forest.
 
-El modelo seleccionado actualmente es el **baseline histórico**, que utiliza la media del índice de los vehículos de referencia pertenecientes a una misma marca y categoría.
+El modelo seleccionado actualmente es el **baseline histórico**, que utiliza la media del índice del grupo marca/categoría aprendido durante el ajuste. Cuando no hay soporte para ese grupo, puede recurrir a la referencia de marca según la política del estimador. La ruta web rechaza marcas no representadas en el baseline entrenado, sin sustituirlas silenciosamente por la media global.
 
 Por tanto, dos vehículos del mismo grupo pueden recibir la misma estimación aunque tengan diferentes características técnicas o años de fabricación.
 
 ### Resultados de evaluación
 
+La fuente de las cifras es [artifacts/model_metrics.json](artifacts/model_metrics.json), cuya copia debe coincidir con la [publicación activa](releases/active.json). La tabla siguiente y la de la Entrega 5 se verifican automáticamente contra ese JSON; no son resultados de evaluaciones distintas.
+
+<!-- AUTO_RELIABILITY_METRICS:START -->
 | Métrica | Resultado |
 |---|---:|
-| Vehículos de entrenamiento | 290 |
-| Vehículos de validación | 90 |
-| Vehículos de test | 819 |
-| MAE de test | 12,1984 |
-| RMSE de test | 17,0354 |
+| Modelo seleccionado | Baseline de marca y categoría |
+| Entrenamiento para selección | 287 casos; 1995–2005 |
+| Validación | 90 casos; 2008–2009 |
+| Ajuste final sin test | 377 casos |
+| MAE de validación baseline | 10,5771 |
+| RMSE de validación baseline | 13,7543 |
+| MAE de validación Ridge | 10,9386 |
+| RMSE de validación Ridge | 13,4978 |
+| MAE de validación Random Forest | 10,8236 |
+| RMSE de validación Random Forest | 13,5027 |
+| Test | 819 casos; 2012–2017 |
+| MAE de test | 12,1537 |
+| RMSE de test | 16,9991 |
+<!-- AUTO_RELIABILITY_METRICS:END -->
 
-La evaluación utiliza una separación temporal de los datos. Las métricas corresponden a la población histórica evaluada y no garantizan el mismo rendimiento para cualquier vehículo.
+La evaluación utiliza separación temporal y embargo para la madurez de las etiquetas. El ajuste final combina entrenamiento y validación, sin incorporar el test. El MAE es el error absoluto medio de la población evaluada: **no es un intervalo individual ni un margen de ±MAE para cada coche**. Los errores varían entre grupos.
 
-El modelo seleccionado no ha demostrado superar al baseline con un error homogéneo entre grupos, uno de los objetivos metodológicos originales del proyecto.
+Ridge y Random Forest no superaron al baseline en el criterio principal, MAE de validación. Sí mejoraron ligeramente el RMSE de validación; el baseline no gana en todas las métricas. Random Forest tampoco satisfizo la mejora estrictamente superior al 10 % frente a Ridge exigida por el protocolo. No se alcanzó el objetivo original de una mejora predictiva adicional al baseline y no se presenta como alcanzado.
 
 ## 4. Tecnologías utilizadas
 
@@ -88,7 +100,7 @@ El modelo seleccionado no ha demostrado superar al baseline con un error homogé
 | Informes | ReportLab |
 | Pruebas | Pytest, Ruff, GitHub Actions |
 
-El proyecto también incorpora una integración opcional con Ollama para generar explicaciones a partir de información proporcionada por el modelo. Cuando no está configurada, utiliza explicaciones deterministas.
+El código conserva atribuciones para Ridge y Random Forest y una integración local opcional con Ollama para otros candidatos. **No intervienen en la explicación del baseline publicado**: esta es determinista y describe la referencia de grupo frente a la media global de entrenamiento, no efectos de potencia, cilindros o historial reciente ni causas de averías.
 
 ## 5. Instalación y ejecución
 
@@ -128,9 +140,12 @@ El repositorio incluye el modelo entrenado y los datasets Gold necesarios para c
 ```bash
 python -m pytest -q
 python -m ruff check src tests app.py
+python -m auto_reliability.documentation
 ```
 
 GitHub Actions ejecuta estas comprobaciones utilizando Python 3.10 y 3.12.
+
+Para consultar el bloque de métricas generado desde la publicación, sin modificar archivos: `python -m auto_reliability.documentation --show`. La comprobación falla si las tablas documentales o las métricas de trabajo se desvían de la publicación activa.
 
 ## 6. Limitaciones y trabajo futuro
 
@@ -142,7 +157,7 @@ AutoReliability es un prototipo académico funcional con las siguientes limitaci
 - **Interpretación:** los recalls no permiten medir directamente la fiabilidad mecánica ni determinar el estado de una unidad individual.
 - **Validación:** los errores varían entre grupos y no se ha demostrado una mejora predictiva homogénea respecto al baseline.
 
-Las futuras líneas de desarrollo incluyen ampliar la cobertura técnica, mejorar la representación de vehículos sin campañas registradas, resolver los cruces de identidades pendientes y evaluar nuevos modelos mediante validación temporal independiente.
+Las futuras líneas de desarrollo incluyen evaluar la utilidad y comprensión con usuarios reales, ampliar la cobertura técnica, resolver las identidades y consultas pendientes y evaluar nuevos modelos con datos adicionales no utilizados para orientar cambios. El test publicado ya se ha examinado; sus reanálisis no constituyen una nueva evaluación independiente. Un fallo de consulta nunca se convierte en cero recalls y un cero en la ventana observada no acredita ausencia de campañas durante toda la vida del vehículo.
 
 ## 7. Conclusión
 

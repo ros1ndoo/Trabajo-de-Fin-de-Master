@@ -14,6 +14,17 @@ from auto_reliability.dashboard import (
 from auto_reliability.demo_data import make_demo_catalog
 
 
+def test_missing_attributions_do_not_turn_technical_context_into_explanations():
+    table = _factor_table({
+        "es_baseline": True,
+        "vehicle_features": {"Potencia": 300, "Cilindros": 8},
+        "segment_features": {"Potencia": 150, "Cilindros": 4},
+    })
+    assert table.iloc[0]["Factor"] == "Explicación no disponible"
+    assert "no entregó atribuciones" in table.iloc[0]["Influencia estimada"]
+    assert "Potencia" not in table.to_string()
+
+
 def test_dashboard_catalog_and_radar_helpers_are_renderable() -> None:
     catalog = normalize_catalog(make_demo_catalog(through_year=2026))
     assert not catalog.empty

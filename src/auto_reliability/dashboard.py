@@ -620,26 +620,14 @@ def _factor_table(result: Mapping[str, Any]) -> Any:
                 rows.append({"Factor": _text(item), "Valor": "—", "Influencia estimada": "Disponible en el modelo"})
 
     if not rows:
-        vehicle = result.get("vehicle_features") if isinstance(result.get("vehicle_features"), Mapping) else {}
-        segment = result.get("segment_features") if isinstance(result.get("segment_features"), Mapping) else {}
-        for label, value in vehicle.items():
-            numeric = _safe_float(value)
-            mean = _safe_float(segment.get(label))
-            if numeric is None:
-                continue
-            comparison = "sin media de segmento"
-            if mean is not None:
-                delta = numeric - mean
-                comparison = f"{abs(delta):.1f} {'por encima' if delta >= 0 else 'por debajo'} de la media"
-            rows.append({"Factor": str(label), "Valor": f"{numeric:.1f}", "Influencia estimada": comparison})
-        if not rows:
-            rows.append(
-                {
-                    "Factor": "Especificaciones e historial previo de marca",
-                    "Valor": "—",
-                    "Influencia estimada": "El servicio no entregó atribuciones detalladas.",
-                }
-            )
+        # Una diferencia técnica frente al segmento no es una atribución del modelo.
+        rows.append(
+            {
+                "Factor": "Explicación no disponible",
+                "Valor": "—",
+                "Influencia estimada": "El servicio no entregó atribuciones detalladas.",
+            }
+        )
     return pandas.DataFrame(rows)
 
 
@@ -848,7 +836,7 @@ def _render_score_ring(st: Any, result: Mapping[str, Any] | None, *, status: Map
           {heading_html}
           <div class="ar-score-band" style="--score:{score:.2f};--ring-color:{color}"><span class="ar-score-marker"></span></div>
           <div class="ar-score-caption">0 = mayor propensión · 100 = menor propensión</div>
-          <div class="ar-stat-line"><span>Error esperado (MAE)</span><strong>{escape(mae)}</strong></div>
+          <div class="ar-stat-line"><span>Error medio de evaluación (MAE)</span><strong>{escape(mae)}</strong></div>
           <div class="ar-stat-line"><span>Método</span><strong>{escape(method)}</strong></div>
           {caption_html}{demo_note}
         </div>
@@ -1164,7 +1152,7 @@ def _render_result(st: Any, service: Any | None, result: Mapping[str, Any]) -> N
             "MODO DEMOSTRACIÓN: este resultado procede de datos sintéticos; no es evidencia NHTSA real."
         )
     message = result.get("mensaje")
-    if result.get("es_baseline") or result.get("fallback"):
+    if _as_bool(result.get("fallback")):
         st.warning(
             _text(message, "Se muestra una referencia baseline histórica; no es la salida del modelo validado.")
         )
@@ -1190,11 +1178,12 @@ def _render_result(st: Any, service: Any | None, result: Mapping[str, Any]) -> N
 
     mae_column, context_column = st.columns(2)
     with mae_column:
-        st.metric("Error esperado (MAE)", _mae_label(mae))
+        st.metric("Error medio de evaluación (MAE)", _mae_label(mae))
         if mae is None:
             st.caption("El servicio no publicó una métrica de evaluación para esta estimación.")
         else:
-            st.caption("Error absoluto medio en evaluación temporal. No es un intervalo de confianza individual.")
+            st.caption("Error absoluto medio de la población evaluada temporalmente. "
+                       "No es un intervalo de confianza individual ni una garantía para este coche.")
     with context_column:
         history_score = _safe_float(result.get("hist_fiabilidad_marca"))
         history_source = _text(result.get("origen_hist_fiabilidad_marca"))
@@ -1228,7 +1217,14 @@ def _render_result(st: Any, service: Any | None, result: Mapping[str, Any]) -> N
 
     technical_column, factors_column = st.columns([1.15, 1])
     with technical_column:
-        st.markdown("<div class='ar-section-title'>Perfil técnico frente al segmento</div>", unsafe_allow_html=True)
+        st.markdown("<div class='ar-section-title'>Contexto técnico frente al segmento</div>", unsafe_allow_html=True)
+        if _as_bool(result.get("es_baseline")):
+            st.info("Solo contexto descriptivo: la potencia, los cilindros y el historial reciente "
+                    "no intervienen en la puntuación de este baseline. "
+                    "La explicación de la referencia de grupo se muestra por separado.")
+        else:
+            st.caption("Comparación descriptiva de especificaciones, no atribuciones del modelo "
+                       "ni evidencia causal de averías.")
         chart = make_radar_figure(
             result.get("vehicle_features") if isinstance(result.get("vehicle_features"), Mapping) else {},
             result.get("segment_features") if isinstance(result.get("segment_features"), Mapping) else {},
@@ -1240,7 +1236,11 @@ def _render_result(st: Any, service: Any | None, result: Mapping[str, Any]) -> N
             st.plotly_chart(chart, width="stretch", config={"displaylogo": False})
         st.caption("Radar relativo para facilitar la comparación visual; los valores exactos aparecen al pasar el cursor.")
     with factors_column:
-        st.markdown("<div class='ar-section-title'>Factores explicativos</div>", unsafe_allow_html=True)
+        explanation_heading = (
+            "Referencia de grupo utilizada" if _as_bool(result.get("es_baseline"))
+            else "Factores explicativos"
+        )
+        st.markdown(f"<div class='ar-section-title'>{explanation_heading}</div>", unsafe_allow_html=True)
         st.dataframe(_factor_table(result), width="stretch", hide_index=True)
         st.markdown(f"<div class='ar-card'><h3>Lectura del resultado</h3><p>{escape(_narrative(result))}</p></div>", unsafe_allow_html=True)
         st.caption(_text(result.get("tipo_explicacion"), "Resumen de las atribuciones del modelo; no establece causalidad."))

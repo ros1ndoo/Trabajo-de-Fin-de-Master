@@ -61,39 +61,35 @@ Modelo y año identifican la ficha consultada y permiten contextualizar el resul
 
 ### 1.4. Selección del modelo y resultados
 
-La fuente de referencia de las métricas es [artifacts/model_metrics.json](../../artifacts/model_metrics.json). Las cifras siguientes corresponden al artefacto congelado el 25 de septiembre de 2026 y se transcriben de ese archivo.
+La fuente de referencia es [artifacts/model_metrics.json](../../artifacts/model_metrics.json), cuya copia debe coincidir con la [publicación activa](../../releases/active.json). La tabla siguiente y la del README se generan desde ese JSON y se comprueban automáticamente en CI; no son evaluaciones independientes ni transcripciones sin control.
 
-| Candidato | MAE de validación | RMSE de validación | Casos |
-| --- | ---: | ---: | ---: |
-| Baseline histórico | 10,5771 | 13,7543 | 90 |
-| Random Forest | 10,8236 | 13,5027 | 90 |
-| Ridge | 10,9386 | 13,4978 | 90 |
+<!-- AUTO_RELIABILITY_METRICS:START -->
+| Métrica | Resultado |
+|---|---:|
+| Modelo seleccionado | Baseline de marca y categoría |
+| Entrenamiento para selección | 287 casos; 1995–2005 |
+| Validación | 90 casos; 2008–2009 |
+| Ajuste final sin test | 377 casos |
+| MAE de validación baseline | 10,5771 |
+| RMSE de validación baseline | 13,7543 |
+| MAE de validación Ridge | 10,9386 |
+| RMSE de validación Ridge | 13,4978 |
+| MAE de validación Random Forest | 10,8236 |
+| RMSE de validación Random Forest | 13,5027 |
+| Test | 819 casos; 2012–2017 |
+| MAE de test | 12,1537 |
+| RMSE de test | 16,9991 |
+<!-- AUTO_RELIABILITY_METRICS:END -->
 
 El baseline obtuvo el menor **MAE de validación**, criterio principal de selección. No obtuvo el menor RMSE: Ridge y Random Forest registraron valores algo inferiores en esa métrica. Por tanto, no se afirma que el baseline sea superior en todas las medidas.
 
-Random Forest redujo el MAE de Ridge un 1,0513 %, por debajo del requisito de mejora estrictamente superior al 10 % establecido en el protocolo. Tampoco superó al baseline en MAE.
+Random Forest no alcanzó la mejora estrictamente superior al 10 % frente a Ridge establecida en el protocolo. Tampoco superó al baseline en MAE.
 
-La evaluación final del artefacto publicado registra:
+Las restricciones de madurez de las etiquetas explican los intervalos entre particiones. Tras seleccionar el candidato, el ajuste final combina entrenamiento y validación, sin incorporar el test.
 
-| Métrica de test | Resultado |
-| --- | ---: |
-| Casos evaluados | 819 |
-| MAE | 12,1537 |
-| RMSE | 16,9991 |
+El test ya ha sido examinado. Estas métricas describen el rendimiento sobre la población histórica evaluada y no garantizan el mismo error para todas las marcas, categorías o vehículos. Sus reanálisis no constituyen una nueva evaluación independiente.
 
-Las particiones efectivas utilizadas en la evaluación son:
-
-| Partición | Años | Casos |
-| --- | --- | ---: |
-| Entrenamiento para selección | 1995–2005 | 287 |
-| Validación | 2008–2009 | 90 |
-| Test | 2012–2017 | 819 |
-
-Las restricciones de madurez de las etiquetas explican los intervalos entre particiones. Tras seleccionar el candidato, el ajuste final combina entrenamiento y validación, con 377 registros, sin incorporar el test.
-
-El test ya ha sido examinado. Estas métricas describen el rendimiento sobre la población histórica evaluada y no garantizan el mismo error para todas las marcas, categorías o vehículos.
-
-El JSON de métricas y la versión del artefacto constituyen la referencia para cualquier cifra reproducida en otros documentos. Esta tabla es una transcripción de la versión indicada, no una sincronización automática.
+La comprobación de solo lectura `python -m auto_reliability.documentation` verifica las tablas contra la publicación activa y rechaza diferencias con las métricas de trabajo. La opción `--show` imprime la tabla canónica para una actualización revisada; no modifica documentos, datos ni el modelo.
 
 ## 2. Diseño del frontal y evolución del mockup
 
@@ -109,9 +105,9 @@ El frontal organiza la información en los siguientes elementos:
 | --- | --- |
 | Selectores de marca, modelo y año | Identificar la ficha consultada mediante opciones en cascada |
 | Indicador de 0 a 100 | Mostrar la estimación del baseline y el método utilizado |
-| MAE temporal | Informar del error absoluto medio de evaluación del artefacto |
-| Factores explicativos | Identificar la referencia de grupo y su diferencia respecto a la media global de entrenamiento |
-| Perfil técnico frente al segmento | Aportar contexto descriptivo sobre las características disponibles |
+| Error medio de evaluación (MAE) | Informar del error absoluto medio de evaluación del artefacto |
+| Referencia de grupo utilizada | Identificar la referencia de grupo y su diferencia respecto a la media global de entrenamiento |
+| Contexto técnico frente al segmento | Aportar contexto descriptivo sobre las características disponibles |
 | Contexto histórico | Mostrar información de cohortes anteriores |
 | Consulta oficial NHTSA | Consultar campañas con indicación de fuente y fecha |
 | Comparación | Contrastar descriptivamente hasta dos resultados |
@@ -201,7 +197,7 @@ Potencia, cilindros e historial reciente no han producido la estimación del bas
 - Las diferencias visuales no acreditan significación estadística.
 - Las características mostradas no permiten identificar causas de averías.
 
-La lectura del resultado del baseline explicita que estas variables no intervienen en su cálculo. El radar y el bloque de factores deben interpretarse como componentes distintos.
+La interfaz incluye un aviso junto al radar: «Solo contexto descriptivo», aclarando que potencia, cilindros e historial reciente no intervienen en el baseline. La explicación aparece por separado bajo «Referencia de grupo utilizada». Si el servicio no entrega atribuciones, el frontal informa de que la explicación no está disponible: no sustituye los factores por diferencias técnicas frente al segmento.
 
 ### 4.3. Contexto histórico de marca
 
@@ -215,7 +211,7 @@ Cuando se utiliza una referencia de mercado por falta de historial suficiente de
 
 El MAE es el promedio de las diferencias absolutas entre estimaciones y etiquetas observadas en la población evaluada.
 
-El valor mostrado corresponde a la evaluación del artefacto, no al error particular del vehículo seleccionado. Por ello:
+El frontal lo etiqueta como «Error medio de evaluación (MAE)». El valor mostrado corresponde a la evaluación del artefacto, no al error particular del vehículo seleccionado. Por ello:
 
 - No se presenta como `puntuación ± MAE`.
 - No constituye un intervalo de confianza.
@@ -259,6 +255,7 @@ Los informes incorporan identidad del vehículo, método, fecha, referencias de 
 - Exportaciones CSV y PDF.
 - Publicación versionada de artefactos y comprobaciones de integridad.
 - Pruebas automatizadas del procesamiento, el servicio y la interfaz.
+- Comprobación automática de las tablas del README y esta entrega contra las métricas de la publicación activa, sin reentrenamiento.
 
 ### 5.2. Limitaciones y objetivos no demostrados
 
@@ -287,7 +284,7 @@ La consulta se realiza por modelo y año, no por VIN. El scraping de precios de 
 
 5. **Estudiar incertidumbre predictiva:** desarrollar y validar métodos específicos, sin utilizar el MAE como sustituto de un intervalo individual.
 
-6. **Mantener coherencia documental:** generar los extractos numéricos de la documentación a partir de las métricas del artefacto correspondiente. Esta automatización evitaría divergencias entre documentos, pero no se presupone implementada en la versión actual.
+6. **Mantener y ampliar los controles documentales:** la generación y comprobación de las tablas de métricas ya están implementadas. En futuras publicaciones habrá que revisar también la prosa, la cobertura y las afirmaciones metodológicas; una comprobación numérica no valida por sí sola todo el contenido.
 
 ## 6. Fuentes de verificación
 
@@ -299,6 +296,7 @@ La consulta se realiza por modelo y año, no por VIN. El scraping de precios de 
 - [Explicabilidad](../../src/auto_reliability/explainability.py): explicación del grupo y comparación con la media global.
 - [Narración](../../src/auto_reliability/narrative.py): salida determinista del baseline.
 - [Frontal](../../src/auto_reliability/dashboard.py): presentación, interpretación, radar y comparación.
+- [Control documental](../../src/auto_reliability/documentation.py): tabla canónica y comprobación de coherencia con las métricas.
 - [Auditorías temporales congeladas](../../artifacts/frozen_evidence/temporal_results.json): análisis descriptivos y resultados por subgrupos.
 
 Esta entrega documenta el comportamiento del artefacto final. Su actualización no modifica el modelo, las métricas, los datos ni los resultados de evaluación.

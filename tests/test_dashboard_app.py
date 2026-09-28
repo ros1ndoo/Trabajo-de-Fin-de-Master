@@ -152,7 +152,8 @@ def test_trained_baseline_remains_visible_when_official_api_is_unavailable():
     app = _estimate(_select(_start(BaselineService())))
     assert app.session_state["ar_current_result"]["prediccion_indice_100"] == 62.5
     assert any("no se ha supuesto" in item.value for item in app.warning)
-    assert any("no distingue modelos" in item.value for item in app.warning)
+    assert any("no distingue modelos" in item.value for item in app.info)
+    assert not any("no es la salida del modelo validado" in item.value for item in app.warning)
     assert not app.exception
 
 
@@ -171,6 +172,34 @@ def test_unverified_empty_official_response_is_not_presented_as_zero_risk():
     assert any("no certifica ausencia" in item.value for item in app.warning)
     assert app.session_state["ar_current_result"]["prediccion_indice_100"] == 62.5
     assert not app.exception
+
+
+@pytest.mark.parametrize("fallback", [False, True])
+def test_baseline_context_is_separate_from_explanation_and_mae_is_population_error(fallback):
+    class BaselineService(DashboardServiceStub):
+        def predict(self, marca, modelo, ano_fabricacion):
+            result = super().predict(marca, modelo, ano_fabricacion)
+            result.update({
+                "es_baseline": True, "fallback": fallback, "modelo_usado": "Baseline histórico",
+                "mensaje": "Referencia de reserva" if fallback else "Baseline seleccionado por validación",
+                "mae": None if fallback else self.mae,
+                "factores": [],
+            })
+            return result
+
+    app = _estimate(_select(_start(BaselineService())))
+    assert any("Solo contexto descriptivo" in item.value and "no intervienen" in item.value
+               for item in app.info)
+    assert any("Referencia de grupo utilizada" in item.value for item in app.markdown)
+    assert not any("Error esperado (MAE)" in item.value for item in app.markdown)
+    assert any(metric.label == "Error medio de evaluación (MAE)" for metric in app.metric)
+    if fallback:
+        assert any("Referencia de reserva" in item.value for item in app.warning)
+    else:
+        assert any("población evaluada" in item.value and "no" in item.value.lower()
+                   for item in app.caption)
+        assert any("Baseline seleccionado" in item.value for item in app.info)
+        assert not any("Baseline seleccionado" in item.value for item in app.warning)
 
 
 def test_internal_report_errors_are_hidden_without_breaking_predictor():
@@ -239,7 +268,7 @@ def test_demo_is_visible_and_missing_mae_is_not_zero():
     app = _estimate(_select(_start(DashboardServiceStub(demo=True, mae=None))))
     assert any("MODO DEMOSTRACIÓN" in element.value for element in app.markdown)
     assert any("datos sintéticos" in element.value for element in app.error)
-    assert next(metric.value for metric in app.metric if metric.label == "Error esperado (MAE)") == "No disponible"
+    assert next(metric.value for metric in app.metric if metric.label == "Error medio de evaluación (MAE)") == "No disponible"
 
 
 def test_coverage_does_not_hide_status_or_ingestion_limitations():
